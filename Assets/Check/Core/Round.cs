@@ -152,6 +152,9 @@ namespace Check.Core
             var pool = new List<Card>(drawPile);
             for (int s = 0; s < hands.Length; s++)
                 if (s != viewerSeat) pool.AddRange(hands[s]);
+            // Ordre canonique avant le mélange : à graine égale, le résultat ne doit pas dépendre de la place
+            // réelle des cartes cachées (sinon le choix de l'IA en dépendrait).
+            pool.Sort((a, b) => a.Id.CompareTo(b.Id));
             rng.Shuffle(pool);
             int k = 0;
             for (int s = 0; s < hands.Length; s++)
