@@ -1,0 +1,19 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 452c06d0c0f6d49d4b7e717e57068c56, type: 3}
+  m_Name: CheckNeonShaderLibrary
+  m_EditorClassIdentifier: Check.Game.Visuals::Check.Game.Visuals.NeonShaderLibrary
+  litOpaqueEmissive: {fileID: 2100000, guid: 4d8be4df0f5c54544b91ed984e77eb16, type: 2}
+  litTransparentEmissive: {fileID: 2100000, guid: 1f94838d788954f47947607656e5b826, type: 2}
+  particleAdditive: {fileID: 2100000, guid: 233c6dc532ae0415cb77ef9da784686f, type: 2}
+  skyboxCubemap: {fileID: 2100000, guid: aa1424f033ae842d0858d56608b06665, type: 2}
+  postProcessProfile: {fileID: 11400000, guid: 9097d6ad9f4254de5b9c76034d6be416, type: 2}

@@ -1,0 +1,20 @@
+{
+    "name": "Check.Editor",
+    "rootNamespace": "Check.EditorTools",
+    "references": [
+        "Check.Game",
+        "Check.Game.Visuals",
+        "Check.Game.Visuals.Editor",
+        "Unity.RenderPipelines.Universal.Runtime",
+        "Unity.RenderPipelines.Core.Runtime"
+    ],
+    "includePlatforms": ["Editor"],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}
