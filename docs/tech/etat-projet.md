@@ -47,3 +47,9 @@ cd ~/dev/check/tests/Check.Tests && DOTNET_CLI_TELEMETRY_OPTOUT=1 /Applications/
 ## En cours
 
 Trois chantiers menés en parallèle sur des branches séparées, à intégrer : IA (`Assets/Check/AI`), rendu des cartes et de la table (`Game/Visuals`), boucle de jeu et interface (`Game/` hors Visuals).
+
+## Pièges connus (hérités de KevChess)
+
+- URP 17 supprimait toutes les variantes de `UberPost` sur Android (écran noir) : « Strip Unused Post Processing Variants » est désactivé dans `Assets/Settings/UniversalRenderPipelineGlobalSettings.asset` (déjà fait ici).
+- Mac : seul le module Mono est installé (pas IL2CPP).
+- Ne jamais ouvrir deux éditeurs Unity sur le même dossier de projet (chaque worktree a le sien).
