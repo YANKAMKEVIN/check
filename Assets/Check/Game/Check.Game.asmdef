@@ -3,6 +3,7 @@
     "rootNamespace": "Check.Game",
     "references": [
         "Check.Core",
+        "Check.AI",
         "Check.Game.Visuals",
         "Unity.InputSystem",
         "UnityEngine.UI",

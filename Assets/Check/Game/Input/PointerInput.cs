@@ -9,7 +9,7 @@ using Touch = UnityEngine.InputSystem.EnhancedTouch.Touch;
 namespace Check.Game.Input
 {
     /// <summary>
-    /// Unifie souris et tactile en gestes simples : tap, double-tap, glisser (orbite), pincer/molette (zoom).
+    /// Unifie souris et tactile en gestes simples : tap, double-tap, glisser (début / position / fin), pincer/molette (zoom).
     /// Un geste qui commence sur l'interface est ignoré.
     /// </summary>
     public sealed class PointerInput : MonoBehaviour
@@ -21,6 +21,12 @@ namespace Check.Game.Input
         public event Action<Vector2> DoubleTapped;
         public event Action<Vector2> Dragged;   // delta en pixels
         public event Action<float> Zoomed;      // facteur > 1 = rapprocher
+        /// <summary>Début d'un glisser à un doigt (position de départ du geste).</summary>
+        public event Action<Vector2> DragBegan;
+        /// <summary>Position courante pendant un glisser à un doigt.</summary>
+        public event Action<Vector2> DragMoved;
+        /// <summary>Fin d'un glisser à un doigt (position de relâche).</summary>
+        public event Action<Vector2> DragEnded;
 
         float dragThreshold;
         Vector2 pressStart, lastPos;
@@ -77,6 +83,7 @@ namespace Check.Game.Input
                     if (pressing) End(t.screenPosition);
                     break;
                 case UnityEngine.InputSystem.TouchPhase.Canceled:
+                    if (pressing && dragging && !gestureBlocked && !multiTouchSeen) DragEnded?.Invoke(t.screenPosition);
                     pressing = false;
                     break;
             }
@@ -124,11 +131,13 @@ namespace Check.Game.Input
             {
                 dragging = true;
                 lastPos = pos;
+                if (!multiTouchSeen) DragBegan?.Invoke(pressStart);
             }
             if (dragging && !multiTouchSeen)
             {
                 Vector2 delta = pos - lastPos;
                 if (delta.sqrMagnitude > 0f) Dragged?.Invoke(delta);
+                DragMoved?.Invoke(pos);
             }
             lastPos = pos;
         }
@@ -136,6 +145,7 @@ namespace Check.Game.Input
         void End(Vector2 pos)
         {
             pressing = false;
+            if (!gestureBlocked && dragging && !multiTouchSeen) DragEnded?.Invoke(pos);
             if (gestureBlocked || dragging || multiTouchSeen) return;
             if (Time.unscaledTime - pressTime > MaxTapSeconds) return;
 
