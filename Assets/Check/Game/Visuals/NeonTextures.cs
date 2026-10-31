@@ -3,12 +3,12 @@ using UnityEngine;
 namespace Check.Game.Visuals
 {
     /// <summary>
-    /// Petites textures générées par code (halo, anneau, cadre, grille, ciel nébuleuse).
+    /// Petites textures générées par code (halo, anneau, ciel de crépuscule).
     /// Toutes sont mises en cache et créées à la première demande.
     /// </summary>
     public static class NeonTextures
     {
-        static Texture2D _radial, _ring, _frame, _softSquare, _grid;
+        static Texture2D _radial, _ring;
         static Cubemap _sky;
 
         /// <summary>Halo radial doux (blanc, alpha dégressif).</summary>
@@ -28,54 +28,9 @@ namespace Check.Game.Visuals
             return Mathf.Clamp01(core + halo) * (d < 1f ? 1f : 0f);
         }));
 
-        /// <summary>Cadre carré lumineux (case sélectionnée) avec remplissage très léger.</summary>
-        public static Texture2D SquareFrame => _frame != null ? _frame : (_frame = Make("Check_SquareFrame", 128, (u, v) =>
-        {
-            float e = Mathf.Max(Mathf.Abs(u - 0.5f), Mathf.Abs(v - 0.5f)) * 2f; // 0 centre, 1 bord
-            float line = Mathf.Exp(-Sq((e - 0.86f) / 0.045f));
-            float halo = Mathf.Exp(-Sq((e - 0.86f) / 0.16f)) * 0.3f;
-            float fill = 0.10f * (1f - e);
-            return Mathf.Clamp01(line + halo + fill) * (e < 1f ? 1f : 0f);
-        }));
-
-        /// <summary>Carré plein aux bords adoucis (dernier coup).</summary>
-        public static Texture2D SoftSquare => _softSquare != null ? _softSquare : (_softSquare = Make("Check_SoftSquare", 64, (u, v) =>
-        {
-            float e = Mathf.Max(Mathf.Abs(u - 0.5f), Mathf.Abs(v - 0.5f)) * 2f;
-            return Mathf.Clamp01((1f - e) * 6f) * 0.55f + Mathf.Exp(-Sq((e - 0.9f) / 0.05f)) * 0.45f;
-        }));
-
-        /// <summary>Grille fine répétable (une cellule par unité) pour le sol de l'abîme sous le plateau.</summary>
-        public static Texture2D Grid
-        {
-            get
-            {
-                if (_grid != null) return _grid;
-                const int size = 128;
-                var tex = new Texture2D(size, size, TextureFormat.RGBA32, true) { name = "Check_Grid", wrapMode = TextureWrapMode.Repeat, filterMode = FilterMode.Trilinear, anisoLevel = 4 };
-                var px = new Color32[size * size];
-                for (int y = 0; y < size; y++)
-                for (int x = 0; x < size; x++)
-                {
-                    float u = (x + 0.5f) / size, v = (y + 0.5f) / size;
-                    float du = Mathf.Min(u, 1f - u), dv = Mathf.Min(v, 1f - v);
-                    float line = Mathf.Max(Mathf.Exp(-Sq(du / 0.012f)), Mathf.Exp(-Sq(dv / 0.012f)));
-                    float glow = Mathf.Max(Mathf.Exp(-Sq(du / 0.06f)), Mathf.Exp(-Sq(dv / 0.06f))) * 0.25f;
-                    // Petits points aux intersections.
-                    float dot = Mathf.Exp(-(Sq(du) + Sq(dv)) / Sq(0.03f));
-                    byte c = (byte)(Mathf.Clamp01(line + glow + dot) * 255f);
-                    px[y * size + x] = new Color32(c, c, c, 255);
-                }
-                tex.SetPixels32(px);
-                tex.Apply(true, false);
-                _grid = tex;
-                return tex;
-            }
-        }
-
         /// <summary>
-        /// Ciel « nébuleuse » sombre (cubemap) : dégradé indigo, volutes cyan/magenta, étoiles.
-        /// Sert de skybox et de réflexion d'environnement pour le cristal.
+        /// Ciel de crépuscule afrofuturiste (cubemap) : zénith indigo, horizon magenta / ambre, soleil cerclé,
+        /// volutes et étoiles. Sert de skybox et de réflexion d'environnement (verre, cuivre).
         /// </summary>
         public static Cubemap NebulaSky
         {
@@ -117,34 +72,44 @@ namespace Check.Game.Visuals
             }
         }
 
-        static readonly Color SkyLow = new Color(0.004f, 0.003f, 0.012f);
-        static readonly Color SkyHorizon = new Color(0.030f, 0.018f, 0.070f);
-        static readonly Color SkyHigh = new Color(0.010f, 0.016f, 0.045f);
-        static readonly Color NebulaCyan = new Color(0.05f, 0.30f, 0.42f);
-        static readonly Color NebulaMagenta = new Color(0.40f, 0.06f, 0.36f);
+        static readonly Color SkyLow = new Color(0.006f, 0.004f, 0.014f);
+        static readonly Color SkyHorizon = new Color(0.16f, 0.045f, 0.14f);
+        static readonly Color SkyGlow = new Color(0.55f, 0.22f, 0.08f);
+        static readonly Color SkyHigh = new Color(0.008f, 0.012f, 0.050f);
+        static readonly Color NebulaCyan = new Color(0.04f, 0.22f, 0.36f);
+        static readonly Color NebulaMagenta = new Color(0.34f, 0.05f, 0.30f);
+        static readonly Vector3 SunDir = new Vector3(0.18f, 0.16f, 1f).normalized;
 
+        // Crépuscule afrofuturiste : zénith indigo, bande d'horizon magenta / ambre,
+        // soleil cerclé d'anneaux (inventé) au fond de la scène, volutes et étoiles.
         static Color SkyColor(Vector3 d, int seed)
         {
-            // Dégradé vertical avec une bande plus claire à l'horizon.
             float h = d.y;
-            Color c = h > 0f ? Color.Lerp(SkyHorizon, SkyHigh, Mathf.Sqrt(h)) : Color.Lerp(SkyHorizon, SkyLow, Mathf.Sqrt(-h));
+            Color c = h > 0f
+                ? Color.Lerp(SkyHorizon, SkyHigh, Mathf.Pow(Mathf.Clamp01(h * 2.2f), 0.55f))
+                : Color.Lerp(SkyHorizon, SkyLow, Mathf.Sqrt(Mathf.Clamp01(-h * 4f)));
+            // Lueur ambrée rasante, plus forte du côté du soleil.
+            float toward = Mathf.Clamp01(Vector3.Dot(new Vector3(d.x, 0f, d.z).normalized, new Vector3(SunDir.x, 0f, SunDir.z).normalized) * 0.5f + 0.5f);
+            c += SkyGlow * (Mathf.Exp(-Mathf.Abs(h) * 14f) * (0.25f + 0.75f * toward * toward));
 
-            // Volutes : bruit fractal continu sur la sphère.
             float n1 = Fbm(d * 2.2f + new Vector3(3.1f, 0.7f, 5.3f));
             float n2 = Fbm(d * 3.1f + new Vector3(-4.2f, 2.9f, 1.1f));
-            float maskCyan = Mathf.Clamp01(Vector3.Dot(d, new Vector3(-0.55f, 0.35f, 0.76f).normalized) * 0.8f + 0.3f);
-            float maskMag = Mathf.Clamp01(Vector3.Dot(d, new Vector3(0.7f, 0.25f, -0.66f).normalized) * 0.8f + 0.3f);
-            float upper = Mathf.Clamp01(h * 2.5f + 0.6f);
-            c += NebulaCyan * (Mathf.Pow(Mathf.Clamp01(n1 * 1.6f - 0.45f), 2.2f) * maskCyan * upper);
-            c += NebulaMagenta * (Mathf.Pow(Mathf.Clamp01(n2 * 1.6f - 0.45f), 2.2f) * maskMag * upper);
+            float upper = Mathf.Clamp01(h * 3f + 0.2f);
+            c += NebulaCyan * (Mathf.Pow(Mathf.Clamp01(n1 * 1.6f - 0.45f), 2.2f) * upper);
+            c += NebulaMagenta * (Mathf.Pow(Mathf.Clamp01(n2 * 1.6f - 0.45f), 2.2f) * upper);
 
-            // Étoiles : rares points, plus denses dans l'hémisphère haut.
+            // Soleil cerclé : disque ambré, halo, deux anneaux fins.
+            float ang = Mathf.Acos(Mathf.Clamp(Vector3.Dot(d, SunDir), -1f, 1f));
+            c += new Color(1f, 0.62f, 0.25f) * (Mathf.Exp(-ang * ang / 0.0016f) * 1.4f + Mathf.Exp(-ang / 0.09f) * 0.22f);
+            c += new Color(1f, 0.45f, 0.75f) * (Mathf.Exp(-Sq((ang - 0.085f) / 0.006f)) * 0.55f);
+            c += new Color(0.35f, 0.8f, 1f) * (Mathf.Exp(-Sq((ang - 0.12f) / 0.005f)) * 0.35f);
+
             uint hash = Hash((uint)seed);
             float r = (hash & 0xFFFF) / 65535f;
-            if (h > -0.15f && r > 0.9965f)
+            if (h > 0.05f && r > 0.9965f)
             {
                 float b = ((hash >> 16) & 0xFF) / 255f;
-                c += Color.Lerp(new Color(0.6f, 0.75f, 1f), new Color(1f, 0.8f, 0.95f), b) * (0.35f + 0.65f * b);
+                c += Color.Lerp(new Color(0.6f, 0.75f, 1f), new Color(1f, 0.85f, 0.7f), b) * (0.35f + 0.65f * b) * Mathf.Clamp01(h * 4f);
             }
             c.a = 1f;
             return c;
