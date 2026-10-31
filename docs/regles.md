@@ -30,7 +30,7 @@ Les points marqués **(à valider)** sont des choix par défaut faits en l'absen
 
 | Carte | Effet |
 |---|---|
-| **As** | Le joueur suivant passe son tour. Deux As posés ensemble font sauter deux joueurs **(à valider)**. |
+| **As** | Le joueur suivant passe son tour. Deux As posés ensemble font sauter deux joueurs **(à valider)** ; on ne se saute jamais soi-même (à deux, on rejoue). |
 | **7** | Le joueur suivant pioche 2 cartes. Il peut à la place poser un 7 (n'importe quelle couleur) : l'effet se cumule sur le joueur d'après (+2 par 7). Deux 7 posés ensemble = +4. |
 | **Joker** | Le joueur suivant pioche (« bouffe ») 4 cartes. Le joker noir ne se pose que sur une carte noire (♠ ♣), le rouge que sur une carte rouge (♥ ♦). Après un joker, on joue n'importe quelle carte de sa couleur **(à valider)**. |
 | **Valet** | Celui qui le pose demande une couleur ; le joueur suivant doit jouer cette couleur (ou un Valet). Le Valet se pose sur n'importe quelle carte **(à valider)**. |

@@ -354,7 +354,8 @@ namespace Check.Core
                         events.Add(new GameEvent { Kind = GameEventKind.PenaltyStacked, Seat = seat, Count = PendingDraw });
                         break;
                     case Rank.Ace:
-                        skip = cards.Count;
+                        // On ne saute jamais le poseur lui-même : à deux, un ou deux As = on rejoue.
+                        skip = Math.Min(cards.Count, ActiveCount - 1);
                         break;
                     case Rank.Jack:
                         RequestedSuit = action.RequestedSuit;

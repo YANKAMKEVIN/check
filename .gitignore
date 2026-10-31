@@ -21,3 +21,5 @@
 # Tests .NET
 tests/**/bin/
 tests/**/obj/
+.utmp/
+.claude/

@@ -162,6 +162,14 @@ namespace Check.Tests
             Assert.AreEqual(0, r.Current);
         }
 
+        [Test]
+        public void Ace_HeadsUpTwoAcesStillReplay()
+        {
+            var r = Pos("AH AS KD", "6C 6D", null, "5H");
+            Play(r, "AH AS");
+            Assert.AreEqual(0, r.Current, "à deux, les sauts ne font jamais sauter le poseur");
+        }
+
         // ---------- 7 ----------
 
         [Test]
