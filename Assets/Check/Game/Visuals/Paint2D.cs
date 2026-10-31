@@ -366,7 +366,7 @@ namespace Check.Game.Visuals
             g['7'] = new[] { P(0.02f, 1.0f, 0.58f, 1.0f, 0.18f, 0.0f) };
             g['8'] = new[] { Arc(0.3f, 0.77f, 0.22f, 0.22f, 0f, 360f, 18), Arc(0.3f, 0.28f, 0.27f, 0.28f, 0f, 360f, 20) };
             g['9'] = new[] { Arc(0.3f, 0.70f, 0.27f, 0.30f, 0f, 360f, 20), P(0.12f, 0.0f, 0.54f, 0.64f) };
-            // Lettres des figures (V D R), de l'as et du joker.
+            // Lettres des figures (V D R), de l'as, du joker et du dos (CHECK).
             g['A'] = new[] { P(0.02f, 0.0f, 0.3f, 1.0f, 0.58f, 0.0f), P(0.13f, 0.34f, 0.47f, 0.34f) };
             g['V'] = new[] { P(0.02f, 1.0f, 0.3f, 0.0f, 0.58f, 1.0f) };
             g['D'] = new[] { Join(P(0.21f, 0.0f, 0.07f, 0.0f, 0.07f, 1.0f, 0.21f, 1.0f), Arc(0.21f, 0.5f, 0.36f, 0.5f, 90f, -90f, 18)) };
@@ -375,6 +375,8 @@ namespace Check.Game.Visuals
             g['O'] = new[] { Arc(0.3f, 0.5f, 0.27f, 0.5f, 0f, 360f, 24) };
             g['K'] = new[] { P(0.07f, 0.0f, 0.07f, 1.0f), P(0.56f, 1.0f, 0.07f, 0.38f), P(0.25f, 0.60f, 0.58f, 0.0f) };
             g['E'] = new[] { P(0.55f, 1.0f, 0.07f, 1.0f, 0.07f, 0.0f, 0.55f, 0.0f), P(0.07f, 0.5f, 0.45f, 0.5f) };
+            g['C'] = new[] { Arc(0.33f, 0.5f, 0.29f, 0.5f, 48f, 312f, 22) };
+            g['H'] = new[] { P(0.07f, 0.0f, 0.07f, 1.0f), P(0.53f, 0.0f, 0.53f, 1.0f), P(0.07f, 0.5f, 0.53f, 0.5f) };
             return g;
         }
 

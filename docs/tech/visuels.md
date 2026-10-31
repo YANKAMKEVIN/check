@@ -1,6 +1,6 @@
 # Rendu des cartes et de la table (Assets/Check/Game/Visuals)
 
-Direction artistique : décor « Dernier Métro » (wagon rétro, laiton, banquettes, ville de nuit qui défile ; voir `WagonDecor.cs`). Les cartes gardent pour l'instant leur style afrofuturiste d'origine (dos, figures, jokers). Tout est généré par code au lancement.
+Direction artistique : décor « Dernier Métro » (wagon rétro, laiton, banquettes, ville de nuit qui défile ; voir `WagonDecor.cs`). Les cartes suivent le même style (Art déco des années 30) : face crème à cadre laiton et éventails de coin ; Roi = chef de gare (képi, moustache), Dame = voyageuse (chapeau cloche, col de fourrure), Valet = contrôleur (casquette, lanterne), panneau pétrole (noires) ou bordeaux (rouges) ; jokers saltimbanques (bleu nuit / bordeaux) ; dos bleu nuit à croisillons laiton et rosace « CHECK ». Tout est généré par code au lancement.
 
 ## Fichiers
 - `Paint2D.cs` : palette `AfroPalette`, moteur de dessin 2D CPU (champs de distance), formes des couleurs (♠♥♦♣), police géométrique `StrokeFont`.
