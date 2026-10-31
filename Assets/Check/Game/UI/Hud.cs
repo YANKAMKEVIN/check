@@ -99,7 +99,7 @@ namespace Check.Game.UI
             UIKit.Anchor((RectTransform)menuButton.transform, new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(24, -20), new Vector2(170, 84));
 
             // Bandeau d'état.
-            var banner = UIKit.Panel("StatusBanner", hud, UIKit.Glass, true, UIKit.Gold);
+            var banner = UIKit.Panel("StatusBanner", hud, UIKit.GlassStrong, true, UIKit.Gold);
             UIKit.Anchor(banner.rectTransform, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0, -16), new Vector2(1060, 112));
             status = UIKit.Label("Status", banner.transform, "", 42, UIKit.Text, TextAnchor.MiddleCenter, FontStyle.Bold);
             UIKit.Stretch(status.rectTransform, 20, 46, 20, 6);
@@ -126,7 +126,7 @@ namespace Check.Game.UI
             UIKit.Anchor((RectTransform)speedButton.transform, new Vector2(1f, 1f), new Vector2(1f, 1f), new Vector2(-24, -66), new Vector2(230, 70));
 
             // Journal des derniers coups.
-            var logPanel = UIKit.Panel("Log", hud, new Color(0.04f, 0.04f, 0.10f, 0.55f), true, UIKit.Indigo * 2f);
+            var logPanel = UIKit.Panel("Log", hud, new Color(0.03f, 0.03f, 0.08f, 0.85f), true, UIKit.Indigo * 2f);
             UIKit.Anchor(logPanel.rectTransform, new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(24, -120), new Vector2(420, 210));
             logPanel.raycastTarget = false;
             logText = UIKit.Label("Lines", logPanel.transform, "", 25, UIKit.TextDim, TextAnchor.UpperLeft);
@@ -531,7 +531,7 @@ namespace Check.Game.UI
             }
             else if (table.ActivePlayer > 0)
             {
-                text = game.IsAIThinking ? $"{game.NameOf(table.ActivePlayer)} réfléchit…" : $"Au tour de {game.NameOf(table.ActivePlayer)}";
+                text = game.IsAIThinking ? $"{game.NameOf(table.ActivePlayer)} réfléchit…" : $"{game.NameOf(table.ActivePlayer)} joue…";
                 if (!game.HumanAlive) sub = "Tu regardes la fin de la partie";
                 else if (game.HumanSeat >= 0 && r.IsFinished(game.HumanSeat)) sub = "Tu es qualifié : les autres finissent le tour";
             }

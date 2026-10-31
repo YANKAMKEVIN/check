@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
+using Check.AI;
 using Check.Core;
 
 namespace Check.Game.Match
@@ -24,16 +25,37 @@ namespace Check.Game.Match
 
     public static class OpponentBrains
     {
-        /// <summary>
-        /// Fabrique un cerveau par adversaire (il peut garder une mémoire de la partie).
-        /// À remplacer par l'IA de Check.AI quand elle sera disponible.
-        /// </summary>
+        /// <summary>Fabrique un cerveau par adversaire : l'IA de Check.AI (une instance par siège).</summary>
         public static IOpponentBrain Create(OpponentLevel level, int playerId, int seed) =>
-            new RandomBrain(level, seed * 7919 + playerId);
+            new CheckAIBrain(level, seed * 7919 + playerId);
+
+        public static AILevel ToAILevel(OpponentLevel level) => level switch
+        {
+            OpponentLevel.Easy => AILevel.Facile,
+            OpponentLevel.Medium => AILevel.Moyen,
+            OpponentLevel.Hard => AILevel.Difficile,
+            _ => AILevel.Expert,
+        };
     }
 
     /// <summary>
-    /// Cerveau provisoire : action légale au hasard, en préférant poser plutôt que piocher,
+    /// Adaptateur vers <see cref="CheckAI"/>. Le contrôleur l'appelle déjà hors du thread principal sur une copie du
+    /// tour : on utilise la version synchrone. Si <c>ct</c> est annulé, l'IA rend tout de suite sa meilleure action.
+    /// </summary>
+    public sealed class CheckAIBrain : IOpponentBrain
+    {
+        readonly CheckAI ai;
+
+        public CheckAIBrain(OpponentLevel level, int seed)
+        {
+            ai = new CheckAI(OpponentBrains.ToAILevel(level), new SystemRandom(seed));
+        }
+
+        public TurnAction Choose(Round round, int seat, CancellationToken ct) => ai.ChooseAction(round, seat, ct);
+    }
+
+    /// <summary>
+    /// Cerveau de secours (tests, débogage) : action légale au hasard, en préférant poser plutôt que piocher,
     /// et en demandant au Valet la couleur la plus fournie de sa main. En Facile, oublie parfois le « Check ».
     /// </summary>
     public sealed class RandomBrain : IOpponentBrain

@@ -242,10 +242,12 @@ namespace Check.Game.View
                 case GameEventKind.Passed: return Wait(0.25f);
                 case GameEventKind.CheckDeclared:
                     sfx.Play(Sfx.Check);
+                    table.PlayCheckWave(SeatPoint(ev.Player));
                     return Wait(0.6f);
                 case GameEventKind.Finished:
                     if (ev.Player >= 0 && ev.Player < Qualified.Length) Qualified[ev.Player] = true;
                     sfx.Play(Sfx.Games);
+                    table.PlayGames(SeatPoint(ev.Player));
                     return Wait(0.8f);
                 case GameEventKind.Eliminated:
                     if (ev.Player >= 0 && ev.Player < Eliminated.Length) Eliminated[ev.Player] = true;
@@ -376,6 +378,9 @@ namespace Check.Game.View
             }
             yield return new WaitForSeconds(Mathf.Max(0f, last));
             sfx.Play(Sfx.Place);
+            table.PulseDiscard();
+            var top = cards[cards.Count - 1];
+            if (top.IsJoker) table.PlayJokerBurst(top.Color == CardColor.Red);
             TrimDiscard();
             yield return new WaitForSeconds(D(0.12f));
         }
@@ -423,6 +428,7 @@ namespace Check.Game.View
                 it.View.MoveTo(pose.pos, pose.rot, dur, 0.3f, player == HumanId ? true : (bool?)null);
                 it.FollowAt = Time.time + dur;
                 sfx.Play(Sfx.Draw, 0.7f);
+                table.PulseDrawPile();
                 yield return new WaitForSeconds(D(stagger));
             }
             yield return new WaitForSeconds(Mathf.Max(0f, dur - D(stagger)) + D(0.08f));
@@ -453,8 +459,6 @@ namespace Check.Game.View
         Item Spawn(Card? card, bool faceUp, Vector3 position)
         {
             var view = CardView.Create(card, faceUp, transform);
-            ProvisionalLook.Apply(view.gameObject);
-            view.SetHighlight(view.Highlight);
             var it = new Item { View = view, BaseScale = view.transform.localScale };
             view.Snap(position, Quaternion.identity);
             all.Add(it);
@@ -555,7 +559,8 @@ namespace Check.Game.View
         {
             var basePos = table != null ? table.DrawPilePosition : Vector3.zero;
             float jitter = Mathf.Sin(index * 12.9898f) * 2.5f;
-            return (basePos + Vector3.up * (0.004f + index * 0.011f), Quaternion.Euler(0f, jitter, 0f));
+            // Chaque carte visible de la pioche en représente ~4 : pas de pile un peu plus grand que l'épaisseur.
+            return (basePos + Vector3.up * (CardView.Thickness * 0.5f + index * (CardView.Thickness * 2f + 0.0008f)), Quaternion.Euler(0f, jitter, 0f));
         }
 
         (Vector3 pos, Quaternion rot) ZonePose(Item it)
@@ -584,9 +589,10 @@ namespace Check.Game.View
             if (it.Under)
             {
                 // Le 2 glissé dessous dépasse en bas à droite.
-                return (basePos + new Vector3(0.2f + h * 0.06f, 0.001f, -0.16f), Quaternion.Euler(0f, 16f + h2 * 10f, 0f));
+                return (basePos + new Vector3(0.2f + h * 0.06f, CardView.Thickness * 0.5f, -0.16f), Quaternion.Euler(0f, 16f + h2 * 10f, 0f));
             }
-            var offset = new Vector3((h - 0.5f) * 0.1f, 0.004f + Mathf.Max(0, index) * 0.006f, (h2 - 0.5f) * 0.1f);
+            var offset = new Vector3((h - 0.5f) * 0.1f,
+                CardView.Thickness * 0.5f + (Mathf.Max(0, index) + 1) * (CardView.Thickness + 0.0008f), (h2 - 0.5f) * 0.1f);
             return (basePos + offset, Quaternion.Euler(0f, (h - 0.5f) * 26f, 0f));
         }
 
@@ -604,8 +610,8 @@ namespace Check.Game.View
             float half = Mathf.Max(0.001f, (count - 1) * 0.5f * step + cardW * 0.5f);
             float u = Mathf.Clamp(x / half, -1f, 1f);
             bool selected = it.Card.HasValue && IsSelected != null && IsSelected(it.Card.Value);
-            float vy = HandCardHeight * 0.5f + 0.012f - 0.035f * u * u + (selected ? 0.07f : 0f);
-            float depth = HandDistance - index * 0.008f - (selected ? 0.05f : 0f);
+            float vy = HandCardHeight * 0.5f + 0.012f - 0.035f * u * u + (selected ? 0.035f : 0f);
+            float depth = HandDistance - index * 0.01f;
             var pos = cam.ViewportToWorldPoint(new Vector3(0.5f + x, vy, depth));
             float roll = -u * Mathf.Min(9f, 2.5f + count * 0.6f);
             var local = Quaternion.AngleAxis(roll, Vector3.forward) * Quaternion.AngleAxis(10f, Vector3.right) *
@@ -624,7 +630,7 @@ namespace Check.Game.View
             float tilt = 32f;
             var pos = seat.HandCenter + right * (off * s / 0.6f)
                       - seat.Facing * (off * off * 0.12f)
-                      + Vector3.up * (Mathf.Sin(tilt * Mathf.Deg2Rad) * CardView.Height * s * 0.5f + 0.02f + index * 0.003f);
+                      + Vector3.up * (Mathf.Sin(tilt * Mathf.Deg2Rad) * CardView.Height * s * 0.5f + 0.02f + index * 0.01f);
             var rot = Quaternion.AngleAxis(tilt, right) * Quaternion.AngleAxis(off * 22f, Vector3.up) *
                       Quaternion.LookRotation(seat.Facing, Vector3.up);
             return (pos, rot);
@@ -773,6 +779,10 @@ namespace Check.Game.View
             float k = 1f - Mathf.Exp(-30f * Time.deltaTime);
             tr.SetPositionAndRotation(Vector3.Lerp(tr.position, pos, k), Quaternion.Slerp(tr.rotation, rot, k));
         }
+
+        /// <summary>Point de la table devant un joueur (effets) ; le joueur humain : bord avant de la table.</summary>
+        Vector3 SeatPoint(int player) =>
+            player >= 0 && player < playerCount ? TableLayout.Seat(player, playerCount).HandCenter : DiscardBase();
 
         // ---------------------------------------------------------------- Points d'écran pour l'interface
 

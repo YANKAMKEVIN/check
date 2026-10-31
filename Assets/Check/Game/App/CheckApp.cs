@@ -67,7 +67,6 @@ namespace Check.Game.App
             table = new GameObject("Table").AddComponent<TableView>();
             table.transform.SetParent(transform, false);
             table.Build();
-            ProvisionalLook.Apply(table.gameObject);
 
             var atmoGo = new GameObject("Atmosphere");
             atmoGo.SetActive(false);
@@ -103,6 +102,7 @@ namespace Check.Game.App
 
         void Start()
         {
+            CardView.Prewarm(); // atlas des 54 faces : généré une fois, pendant l'accueil
             cards.Setup(4); // une pioche sur la table derrière l'accueil
             hud.ShowHome();
             if (AutoTest.Requested(out var folder)) gameObject.AddComponent<AutoTest>().Run(this, folder);
