@@ -40,7 +40,7 @@ tests/Check.Tests/  tests NUnit hors Unity (Core + AI)
 cd ~/dev/check/tests/Check.Tests && DOTNET_CLI_TELEMETRY_OPTOUT=1 /Applications/Unity/Hub/Editor/6000.6.3f1/Unity.app/Contents/Resources/Scripting/DotNetSdk/dotnet test
 ```
 
-63 tests verts sur le moteur : chaque carte spéciale, cumuls et contres, poses multiples, pioche et remélange, Check / Games, éliminations, parties aléatoires de 2 à 10 joueurs (conservation des 54 cartes).
+102 tests verts (~10 à 50 s selon la charge) : moteur (chaque carte spéciale, cumuls et contres, poses multiples, pioche et remélange, Check / Games, éliminations, parties aléatoires de 2 à 10 joueurs) et IA (légalité, budget de temps, pas de triche, tournois : Moyen bat Facile, Difficile bat Moyen ; Expert ≈ Difficile pour l'instant).
 
 ## Builds
 
@@ -60,14 +60,24 @@ pioche, Passer, double-tap), retour Android, sauvegarde puis reprise en plein to
 animations, 3 formats d'écran (19,5:9, 16:9, 4:3), puis partie à 10 en accéléré jusqu'au bout ; vérifie l'absence
 d'exception et d'écart vue/moteur. Captures : `docs/captures/jeu/`. Verte le 2026-10-31 avec l'IA réelle et le rendu définitif.
 
-## En cours
+## État au 2026-10-31
 
-Trois chantiers menés en parallèle sur des branches séparées, à intégrer : IA (`Assets/Check/AI`), rendu des cartes et de la table (`Game/Visuals`), boucle de jeu et interface (`Game/` hors Visuals).
+Jeu complet jouable : accueil, 2 à 10 joueurs, 4 niveaux d'IA, règles réglables, animations, éliminations, victoire, sauvegarde.
+Installé et essayé au doigt sur le **Galaxy S24** (`RFCX80Y0FVX`) : rendu 3D, sélection, pose, tours des IA, cumul de pénalités OK.
+L'APK Android : `Builds/Android/Check.apk` (31 Mo). Pas encore de build iOS (module iOS à installer dans Unity Hub).
+
+## Prochaines étapes
+
+- [ ] Kevin valide les règles marquées « à valider » dans `docs/regles.md`
+- [ ] Passe QA complète sur téléphone (partie entière à 4 et à 10, Valet, Check oublié, glisser vers le tas, haptique, mesure des fps)
+- [ ] Expert : tenir compte des couleurs qu'un adversaire n'a pas (quand il pioche) pour qu'il batte Difficile
+- [ ] iOS : module iOS + build Xcode + simulateur
+- [ ] Idées : jeu en ligne entre amis, statistiques, thèmes de table, voix « Check ! » / « Games ! »
 
 ## Points ouverts (boucle de jeu et interface)
 
-- Passe QA sur téléphone (Galaxy) : taille de la main au doigt, haptique, encoches, bouton retour.
-- Règle à valider : à 2 joueurs, deux As posés ensemble font sauter l'adversaire puis soi-même (le tour revient à l'adversaire).
+- Passe QA sur téléphone : faite en partie sur le S24 (voir ci-dessus) ; haptique, encoches et bouton retour non vérifiés au doigt.
+- As : on ne se saute jamais soi-même (à deux, un ou deux As = on rejoue), corrigé dans le moteur.
 - Glisser une carte vers le tas : implémenté, pas encore essayé au doigt.
 - La reprise rejoue le « film » des actions (graine + actions) : une sauvegarde faite avec une version différente des règles est effacée si elle ne se rejoue pas.
 
@@ -76,3 +86,7 @@ Trois chantiers menés en parallèle sur des branches séparées, à intégrer :
 - URP 17 supprimait toutes les variantes de `UberPost` sur Android (écran noir) : « Strip Unused Post Processing Variants » est désactivé dans `Assets/Settings/UniversalRenderPipelineGlobalSettings.asset` (déjà fait ici).
 - Mac : seul le module Mono est installé (pas IL2CPP).
 - Ne jamais ouvrir deux éditeurs Unity sur le même dossier de projet (chaque worktree a le sien).
+- **Android, écran noir derrière l'UI** : la liste `m_List` des ressources URP de `UniversalRenderPipelineGlobalSettings.asset` doit rester remplie et commitée (Unity la remplit au build ; la vider retire `UberPost` du build). Ne pas annuler ce fichier après un build.
+- **Android, symboles ♠ ♥ ♦ ♣ invisibles** : les polices Android ne les ont pas → police `Game/UI/Resources/CheckSuits.ttf` (Noto Sans Symbols 2, OFL) utilisée sur mobile, lettres en repli sur la police système (réglé dans son .meta).
+- Unity modifie tout seul les gabarits `.mat` de `Visuals/Resources/NeonTemplates` à chaque build : les restaurer (`git checkout`).
+- Un build Mac fait juste après un build Android peut donner un joueur cassé (exceptions SSAO / Blitter) : refaire le build Mac.
