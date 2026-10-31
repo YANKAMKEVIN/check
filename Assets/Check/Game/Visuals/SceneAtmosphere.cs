@@ -171,7 +171,7 @@ namespace Check.Game.Visuals
             sunGo.transform.rotation = Quaternion.Euler(52f, -38f, 0f);
             Sun = sunGo.AddComponent<Light>();
             Sun.type = LightType.Directional;
-            Sun.color = new Color(0.82f, 0.88f, 1f);
+            Sun.color = new Color(1f, 0.93f, 0.84f);
             Sun.intensity = sunIntensity;
             Sun.shadows = LightShadows.Soft;
             Sun.shadowStrength = 0.85f;
@@ -180,11 +180,9 @@ namespace Check.Game.Visuals
             RenderSettings.sun = Sun;
             SetupUrpLight(Sun);
 
-            // Appoints colorés : magenta côté noirs, cyan côté blancs (reflets sur les facettes).
-            CreatePointLight("Accent Magenta", new Vector3(4.8f, 2.8f, 5.2f), NeonPalette.BlackGlow, accentLightIntensity, 15f);
-            CreatePointLight("Accent Cyan", new Vector3(-4.8f, 2.4f, -5.2f), NeonPalette.WhiteGlow, accentLightIntensity * 0.85f, 15f);
-            // Contre-jour discret pour détacher les silhouettes.
-            CreatePointLight("Rim", new Vector3(0f, 4.5f, 7.5f), new Color(0.6f, 0.55f, 1f), accentLightIntensity * 0.6f, 16f);
+            // Appoints colorés : ambre (cuivre, or) au fond à droite, cyan devant à gauche (reflets du verre).
+            CreatePointLight("Accent Amber", new Vector3(5.2f, 2.8f, 4.6f), AfroPalette.NeonAmber, accentLightIntensity, 15f);
+            CreatePointLight("Accent Cyan", new Vector3(-5.2f, 2.4f, -4.4f), NeonPalette.WhiteGlow, accentLightIntensity * 0.8f, 15f);
         }
 
         void CreatePointLight(string name, Vector3 position, Color color, float intensity, float range)
@@ -212,8 +210,8 @@ namespace Check.Game.Visuals
             }
 
             // Ambiance trichromatique sombre, appliquée aussi à la sonde harmonique utilisée par URP.
-            Color sky = new Color(0.10f, 0.11f, 0.24f);
-            Color equator = new Color(0.07f, 0.045f, 0.13f);
+            Color sky = new Color(0.11f, 0.11f, 0.24f);
+            Color equator = new Color(0.10f, 0.05f, 0.11f);
             Color ground = new Color(0.015f, 0.01f, 0.03f);
             RenderSettings.ambientMode = AmbientMode.Trilight;
             RenderSettings.ambientSkyColor = sky;
@@ -270,7 +268,7 @@ namespace Check.Game.Visuals
             main.startSpeed = new ParticleSystem.MinMaxCurve(0.02f, 0.12f);
             main.startSize = new ParticleSystem.MinMaxCurve(0.025f, 0.075f);
             main.startColor = new ParticleSystem.MinMaxGradient(
-                new Color(0.45f, 0.95f, 1f, 0.9f), new Color(1f, 0.4f, 0.9f, 0.9f));
+                new Color(1f, 0.75f, 0.35f, 0.9f), new Color(0.45f, 0.95f, 1f, 0.9f));
             main.maxParticles = 140;
             main.simulationSpace = ParticleSystemSimulationSpace.World;
             main.gravityModifier = -0.004f; // dérive très lente vers le haut
