@@ -29,8 +29,27 @@ namespace Check.EditorTools
             ConfigurePlayer();
             ConfigureInputHandling();
             ConfigureRendering();
+            ConfigureSuitFont();
             AssetDatabase.SaveAssets();
             Debug.Log("[Check] Projet configuré");
+        }
+
+        const string SuitFontPath = "Assets/Check/Game/UI/Resources/CheckSuits.ttf";
+
+        /// <summary>
+        /// Police de l'interface sur mobile : Noto Sans Symbols 2 (OFL, symboles ♠ ♥ ♦ ♣ seulement),
+        /// dynamique, avec repli glyphe par glyphe sur la police système pour les lettres.
+        /// </summary>
+        static void ConfigureSuitFont()
+        {
+            if (!(AssetImporter.GetAtPath(SuitFontPath) is TrueTypeFontImporter importer)) return;
+            var names = new[] { "Roboto", "Helvetica Neue", "Arial" };
+            if (importer.fontTextureCase == FontTextureCase.Dynamic && importer.includeFontData &&
+                importer.fontNames != null && importer.fontNames.SequenceEqual(names)) return;
+            importer.fontTextureCase = FontTextureCase.Dynamic;
+            importer.includeFontData = true;
+            importer.fontNames = names;
+            importer.SaveAndReimport();
         }
 
         [MenuItem("Check/Build Android (APK)")]

@@ -30,9 +30,20 @@ namespace Check.Game.UI
         {
             get
             {
-                if (font == null) font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+                if (font == null) font = OsFontWithSuits() ?? Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
                 return font;
             }
+        }
+
+        /// <summary>
+        /// Sur mobile, la police intégrée n'a pas les symboles ♠ ♥ ♦ ♣ (et les polices système varient d'un
+        /// téléphone à l'autre) : on embarque Noto Sans Symbols 2, qui ne contient que des symboles, et
+        /// les lettres passent par son repli sur la police système (Roboto, Helvetica…), réglé à l'import.
+        /// </summary>
+        static Font OsFontWithSuits()
+        {
+            if (!Application.isMobilePlatform) return null;
+            return Resources.Load<Font>("CheckSuits");
         }
 
         /// <summary>Rectangle arrondi blanc (9-slice), teinté par Image.color.</summary>

@@ -454,7 +454,8 @@ namespace Check.Game.UI
             while (log.Count > 6) log.RemoveAt(0);
             logText.text = string.Join("\n", log);
             var panel = (RectTransform)logText.transform.parent;
-            panel.sizeDelta = new Vector2(panel.sizeDelta.x, 24f + 31f * log.Count);
+            // Hauteur réelle du texte : la police système d'Android a des lignes plus hautes que celle du Mac.
+            panel.sizeDelta = new Vector2(panel.sizeDelta.x, 24f + Mathf.Max(31f * log.Count, logText.preferredHeight));
         }
 
         void SetEventStatus(string text, float seconds)
