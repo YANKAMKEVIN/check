@@ -283,7 +283,7 @@ namespace Check.Game.View
             {
                 RemoveFromZones(it);
                 it.Follow = false;
-                it.TargetScale = 1f;
+                it.TargetScale = CenterScale;
                 it.View.MoveTo(PilePose(pile.Count).pos, PilePose(0).rot, D(0.35f), 0.2f, false);
             }
             if (leftovers.Count > 0) yield return new WaitForSeconds(D(0.38f));
@@ -364,7 +364,7 @@ namespace Check.Game.View
             {
                 var it = TakeFromHand(player, cards[k]);
                 it.Follow = false;
-                it.TargetScale = 1f;
+                it.TargetScale = CenterScale;
                 it.Zone = Zone.Discard;
                 it.Under = false;
                 discard.Add(it);
@@ -391,9 +391,9 @@ namespace Check.Game.View
             {
                 var it = TakeFromHand(player, card);
                 it.Follow = false;
-                it.TargetScale = 1f;
+                it.TargetScale = CenterScale;
                 // 1) la carte arrive à côté du tas, face visible…
-                var beside = DiscardBase() + new Vector3(0.78f, 0.03f, -0.1f);
+                var beside = DiscardBase() + new Vector3(0.6f, 0.02f, -0.08f) * CenterScale;
                 var rot = Quaternion.Euler(0f, 14f, 0f);
                 float dur = D(0.3f);
                 it.View.MoveTo(beside, rot, dur, 0.3f, true);
@@ -459,7 +459,9 @@ namespace Check.Game.View
         Item Spawn(Card? card, bool faceUp, Vector3 position)
         {
             var view = CardView.Create(card, faceUp, transform);
-            var it = new Item { View = view, BaseScale = view.transform.localScale };
+            // Une carte naît toujours sur la table (pioche, tas) : à la taille du centre.
+            var it = new Item { View = view, BaseScale = view.transform.localScale, Scale = CenterScale, TargetScale = CenterScale };
+            view.transform.localScale = it.BaseScale * CenterScale;
             view.Snap(position, Quaternion.identity);
             all.Add(it);
             return it;
@@ -555,12 +557,14 @@ namespace Check.Game.View
 
         Vector3 DiscardBase() => table != null ? table.DiscardPosition : Vector3.zero;
 
+        static float CenterScale => TableView.CenterCardScale;
+
         (Vector3 pos, Quaternion rot) PilePose(int index)
         {
             var basePos = table != null ? table.DrawPilePosition : Vector3.zero;
             float jitter = Mathf.Sin(index * 12.9898f) * 2.5f;
             // Chaque carte visible de la pioche en représente ~4 : pas de pile un peu plus grand que l'épaisseur.
-            return (basePos + Vector3.up * (CardView.Thickness * 0.5f + index * (CardView.Thickness * 2f + 0.0008f)), Quaternion.Euler(0f, jitter, 0f));
+            return (basePos + Vector3.up * ((CardView.Thickness * 0.5f + index * (CardView.Thickness * 2f + 0.0008f)) * CenterScale), Quaternion.Euler(0f, jitter, 0f));
         }
 
         (Vector3 pos, Quaternion rot) ZonePose(Item it)
@@ -589,11 +593,12 @@ namespace Check.Game.View
             if (it.Under)
             {
                 // Le 2 glissé dessous dépasse en bas à droite.
-                return (basePos + new Vector3(0.2f + h * 0.06f, CardView.Thickness * 0.5f, -0.16f), Quaternion.Euler(0f, 16f + h2 * 10f, 0f));
+                return (basePos + new Vector3(0.2f + h * 0.06f, CardView.Thickness * 0.5f, -0.16f) * CenterScale, Quaternion.Euler(0f, 16f + h2 * 10f, 0f));
             }
-            var offset = new Vector3((h - 0.5f) * 0.1f,
-                CardView.Thickness * 0.5f + (Mathf.Max(0, index) + 1) * (CardView.Thickness + 0.0008f), (h2 - 0.5f) * 0.1f);
-            return (basePos + offset, Quaternion.Euler(0f, (h - 0.5f) * 26f, 0f));
+            var offset = new Vector3((h - 0.5f) * 0.1f * CenterScale,
+                (CardView.Thickness * 0.5f + (Mathf.Max(0, index) + 1) * (CardView.Thickness + 0.0008f)) * CenterScale, (h2 - 0.5f) * 0.1f * CenterScale);
+            // Rotation modérée : la carte du dessus doit se lire d'un coup d'œil.
+            return (basePos + offset, Quaternion.Euler(0f, (h - 0.5f) * 16f, 0f));
         }
 
         /// <summary>Pose d'une carte de la main humaine : grand éventail tenu devant la caméra, en bas de l'écran.</summary>
@@ -729,7 +734,7 @@ namespace Check.Game.View
         {
             if (cam == null || table == null) return false;
             var top = PilePose(Mathf.Max(0, pile.Count - 1)).pos;
-            return ScreenQuadContains(top, Quaternion.identity, CardView.Width * 1.45f, CardView.Height * 1.35f, screen);
+            return ScreenQuadContains(top, Quaternion.identity, CardView.Width * 1.3f * CenterScale, CardView.Height * 1.25f * CenterScale, screen);
         }
 
         bool ScreenQuadContains(Vector3 center, Quaternion rot, float width, float height, Vector2 p)

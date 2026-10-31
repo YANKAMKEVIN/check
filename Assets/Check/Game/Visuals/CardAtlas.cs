@@ -158,7 +158,7 @@ namespace Check.Game.Visuals
         static void CreateMaterials()
         {
             // Face : un peu auto-éclairée par l'atlas pour rester lisible quel que soit l'éclairage.
-            _face = NeonMaterials.CreateLitOpaque("Check_CardFace", new Color(0.94f, 0.94f, 0.94f), 0f, 0.6f, new Color(0.36f, 0.36f, 0.36f));
+            _face = NeonMaterials.CreateLitOpaque("Check_CardFace", new Color(0.94f, 0.94f, 0.94f), 0f, 0.42f, new Color(0.36f, 0.36f, 0.36f));
             _face.SetTexture(BaseMapId, _atlas);
             _face.SetTexture(EmissionMapId, _atlas);
             _faceDim = NeonMaterials.CreateLitOpaque("Check_CardFaceDim", new Color(0.36f, 0.36f, 0.42f), 0f, 0.5f, new Color(0.07f, 0.07f, 0.09f));
@@ -166,7 +166,7 @@ namespace Check.Game.Visuals
             _faceDim.SetTexture(EmissionMapId, _atlas);
 
             // Dos : indigo verni, pistes néon émissives (bloom).
-            _backMat = NeonMaterials.CreateLitOpaque("Check_CardBack", Color.white, 0.2f, 0.74f, Color.white * 2.3f);
+            _backMat = NeonMaterials.CreateLitOpaque("Check_CardBack", Color.white, 0f, 0.42f, Color.white * 2.3f);
             _backMat.SetTexture(BaseMapId, _back);
             _backMat.SetTexture(EmissionMapId, _backGlow);
             _backDim = NeonMaterials.CreateLitOpaque("Check_CardBackDim", new Color(0.4f, 0.4f, 0.45f), 0.2f, 0.6f, Color.white * 0.5f);

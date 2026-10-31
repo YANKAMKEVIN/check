@@ -1,6 +1,6 @@
 # Check — état du projet
 
-Jeu de cartes camerounais « Check » en 3D, pour Android et iOS (macOS pour tester). Direction artistique afrofuturiste mêlée au néon de KevChess, tout généré par code.
+Jeu de cartes camerounais « Check » en 3D, pour Android et iOS (macOS pour tester). Décor « Dernier Métro » (wagon rétro aménagé en salon qui traverse une ville la nuit), tout généré par code.
 
 Dernière mise à jour : 2026-10-31.
 
@@ -14,7 +14,8 @@ Dépôt : https://github.com/YANKAMKEVIN/check (privé), branche `main` suivie s
 | Moteur | Unity 6000.6.3f1 + URP 17 + Input System, configuration reprise de `~/dev/kevchess` |
 | Plateforme | Mobile d'abord, écran en paysage (jusqu'à 10 joueurs autour de la table) |
 | Joueurs | 2 à 10 : le joueur humain + des IA (4 niveaux) |
-| DA | Afrofuturisme (motifs ndop / wax, or et cuivre, indigo) + néon façon KevChess |
+| DA | « Dernier Métro » (choisi par Kevin le 2026-10-31 parmi 6 univers proposés par Codex ; il ne voulait plus de thème Cameroun ni des tours néon) : wagon, banquettes, laiton, ville de nuit qui défile ; palette pétrole #173F46, ambre #D99B59, nuit #243047, crème #F3E5CE. Captures : `docs/captures/metro/` |
+| Carte du centre | Pioche et tas agrandis (`TableView.CenterCardScale` = 1,7), plateau mat et uni, rotation du tas réduite : demande de Kevin (« on a du mal à voir la carte au centre ») |
 | Identifiant | `com.kevinyankam.check` |
 
 ## Architecture
@@ -24,7 +25,7 @@ Assets/Check/
   Core/    règles pures (C#, sans UnityEngine) : Card, RuleSet, TurnAction, GameEvent, Round (un tour), Match (tours + éliminations)
   AI/      IA des adversaires (pure C#)
   Game/
-    Visuals/ CardView, TableView (contrats publics), outillage néon repris de KevChess
+    Visuals/ CardView, TableView (contrats publics), WagonDecor (wagon + ville), outillage repris de KevChess
     Match/   GameController (boucle : moteur, IA hors thread, sauvegarde), HumanTurn (sélection, Check, Valet, pioche),
              IOpponentBrain (seul point de branchement de Check.AI), GameSettings (PlayerPrefs, noms), SavedGame
     View/    CardTable (cartes à l'écran + file d'animations des GameEvent), TableLayout (places de 2 à 10 joueurs)
@@ -66,11 +67,13 @@ d'exception et d'écart vue/moteur. Captures : `docs/captures/jeu/`. Verte le 20
 
 Jeu complet jouable : accueil, 2 à 10 joueurs, 4 niveaux d'IA, règles réglables, animations, éliminations, victoire, sauvegarde.
 Installé et essayé au doigt sur le **Galaxy S24** (`RFCX80Y0FVX`) : rendu 3D, sélection, pose, tours des IA, cumul de pénalités OK.
-L'APK Android : `Builds/Android/Check.apk` (31 Mo). Pas encore de build iOS (module iOS à installer dans Unity Hub).
+L'APK Android : `Builds/Android/Check.apk` (36 Mo). Toujours passer `-buildTarget Android` (ou `OSXUniversal`) en batchmode. Pas encore de build iOS (module iOS à installer dans Unity Hub).
 
 ## Prochaines étapes
 
 - [ ] Kevin valide les règles marquées « à valider » dans `docs/regles.md`
+- [ ] Kevin teste le décor « Dernier Métro » sur téléphone (vérifié sur Mac et sur le Galaxy A17 ; le S24 était débranché)
+- [ ] Dos des cartes et figures encore dans le style afrofuturiste : à revoir si Kevin veut les accorder au métro
 - [ ] Passe QA complète sur téléphone (partie entière à 4 et à 10, Valet, Check oublié, glisser vers le tas, haptique, mesure des fps)
 - [ ] Expert : tenir compte des couleurs qu'un adversaire n'a pas (quand il pioche) pour qu'il batte Difficile
 - [ ] iOS : module iOS + build Xcode + simulateur

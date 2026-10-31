@@ -57,8 +57,8 @@ namespace Check.Game.App
             var camGo = new GameObject("Main Camera") { tag = "MainCamera" };
             camGo.transform.SetParent(transform, false);
             mainCamera = camGo.AddComponent<Camera>();
-            mainCamera.clearFlags = CameraClearFlags.Skybox;
-            mainCamera.backgroundColor = new Color(0.02f, 0.01f, 0.05f);
+            mainCamera.clearFlags = CameraClearFlags.SolidColor;
+            mainCamera.backgroundColor = WagonDecor.Sky;
             mainCamera.allowHDR = true;
             mainCamera.allowMSAA = true;
             camGo.AddComponent<AudioListener>();
@@ -177,7 +177,7 @@ namespace Check.Game.App
         bool NearDiscard(Vector2 screen)
         {
             var p = cards.DiscardScreenPoint;
-            return p.z > 0f && Vector2.Distance(screen, p) < Screen.height * 0.12f;
+            return p.z > 0f && Vector2.Distance(screen, p) < Screen.height * 0.17f;
         }
 
         void Update()

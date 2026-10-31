@@ -40,6 +40,7 @@ namespace Check.Game.CameraRig
             lastHeight = Screen.height;
             cam.fieldOfView = FieldOfView;
             distance = FitView(out offset);
+            Debug.Log($"[Check] Caméra : distance {distance:F1}, position {Target + offset + Quaternion.Euler(Pitch, 0f, 0f) * new Vector3(0f, 0f, -distance)}");
         }
 
         float FitView(out Vector3 focusOffset)

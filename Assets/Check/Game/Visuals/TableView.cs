@@ -9,11 +9,11 @@ namespace Check.Game.Visuals
     /// Repère : table centrée en (0, 0, 0), plateau à y = <see cref="SurfaceY"/>, le joueur humain
     /// est assis côté -Z (bas de l'écran), les adversaires répartis sur l'arc du fond.
     ///
-    /// Rendu : plateau de verre sombre (super-ellipse) à motifs lumineux wax / ndop / circuits,
-    /// bordure en cuivre doré incrustée d'émail indigo et d'un tube néon, emplacements lumineux de la
-    /// pioche et du tas, halo de la place active, vignette rouge pulsée quand une pénalité s'accumule.
-    /// Décor : sol à anneaux lumineux, tours-obus inspirées des cases musgoum (Extrême-Nord du Cameroun)
-    /// en version néon, anneaux dorés flottants. Aucune lumière temps réel ajoutée.
+    /// Rendu (« Dernier Métro ») : plateau en linoléum bleu pétrole mat et uni, pour que les cartes
+    /// ressortent ; chant en bois verni filé de laiton, discrète lueur ambrée vers la place active,
+    /// emplacements crème de la pioche et du tas (agrandis : <see cref="CenterCardScale"/>),
+    /// vignette rouge pulsée quand une pénalité s'accumule.
+    /// Décor : wagon rétro aménagé en salon (voir <see cref="WagonDecor"/>). Aucune lumière ajoutée ici.
     /// Le visuel du plateau est 3,5 mm sous y = 0 : une carte centrée en y = 0 repose dessus sans clignoter.
     /// </summary>
     public sealed class TableView : MonoBehaviour
@@ -23,8 +23,11 @@ namespace Check.Game.Visuals
         public const float HalfWidth = 3.2f;
         public const float HalfDepth = 4.2f;
 
-        public Vector3 DrawPilePosition => new Vector3(-0.55f, SurfaceY, 0.35f);
-        public Vector3 DiscardPosition => new Vector3(0.55f, SurfaceY, 0.35f);
+        /// <summary>Échelle des cartes de la pioche et du tas (plus grandes que les mains adverses, pour bien lire la carte du dessus).</summary>
+        public const float CenterCardScale = 1.7f;
+
+        public Vector3 DrawPilePosition => new Vector3(-0.78f, SurfaceY, 0.4f);
+        public Vector3 DiscardPosition => new Vector3(0.78f, SurfaceY, 0.4f);
 
         /// <summary>Niveau de tension affiché (0..1, lissé).</summary>
         public float TensionLevel => tension;
@@ -35,12 +38,11 @@ namespace Check.Game.Visuals
         const float FloorY = -2.4f;
         const int RimSamples = 192;
 
-        static readonly Color StripBase = new Color(0.10f, 0.42f, 1.00f) * 0.6f;
-        static readonly Color StripSeat = new Color(1.00f, 0.66f, 0.22f);
-        static readonly Color SurfaceEmission = Color.white * 1.35f;
-        static readonly Color TensionEmission = new Color(2.4f, 0.30f, 0.28f);
-        static readonly Color StripColor = Color.white * 1.6f;
-        static readonly Color SeatHaloColor = new Color(1.0f, 0.62f, 0.22f) * 0.8f;
+        static readonly Color StripBase = new Color(0.30f, 0.19f, 0.09f) * 0.35f;
+        static readonly Color StripSeat = new Color(1.00f, 0.66f, 0.30f);
+        static readonly Color StripColor = Color.white * 0.9f;
+        static readonly Color SeatHaloColor = new Color(1.0f, 0.70f, 0.38f) * 0.35f;
+        static readonly Color SlotColor = new Color(0.95f, 0.88f, 0.74f) * 0.32f;
 
         bool built;
         Material surfaceMat, stripMat, drawSlotMat, discardSlotMat, haloMat, tensionMat;
@@ -155,14 +157,14 @@ namespace Check.Game.Visuals
             drawFlash = Mathf.MoveTowards(drawFlash, 0f, dt * 2.5f);
             discardFlash = Mathf.MoveTowards(discardFlash, 0f, dt * 2.5f);
 
-            Color surf = Color.Lerp(SurfaceEmission, TensionEmission, tension) * (1f + 0.35f * tension * pulse) + flashColor * surfaceFlash * 0.8f;
-            surfaceMat.SetColor(NeonMaterials.EmissionColorProperty, surf);
+            // Plateau mat : il ne s'allume qu'un instant (Check, joker…), et rougit à peine sous la pression.
+            surfaceMat.SetColor(NeonMaterials.EmissionColorProperty, flashColor * (surfaceFlash * 0.12f) + new Color(0.10f, 0.0f, 0.0f) * (tension * pulse));
             stripMat.SetColor(NeonMaterials.BaseColorProperty, Color.Lerp(StripColor, NeonPalette.Check * 3.2f, tension) * (1f + 0.5f * tension * pulse) + flashColor * surfaceFlash);
             float breathe = 0.85f + 0.15f * Mathf.Sin(t * 1.7f);
             haloMat.SetColor(NeonMaterials.BaseColorProperty, Color.Lerp(SeatHaloColor, NeonPalette.Check * 1.4f, tension * 0.6f) * (haloAlpha * breathe));
             tensionMat.SetColor(NeonMaterials.BaseColorProperty, NeonPalette.Check * (tension * (0.45f + 0.55f * pulse) * 1.3f));
-            drawSlotMat.SetColor(NeonMaterials.BaseColorProperty, new Color(0.3f, 0.9f, 1f) * (1.1f + 0.15f * Mathf.Sin(t * 2.1f) + 2.5f * drawFlash));
-            discardSlotMat.SetColor(NeonMaterials.BaseColorProperty, new Color(1f, 0.62f, 0.25f) * (1.1f + 0.15f * Mathf.Sin(t * 2.1f + 1.5f) + 2.5f * discardFlash));
+            drawSlotMat.SetColor(NeonMaterials.BaseColorProperty, SlotColor * (1f + 3f * drawFlash));
+            discardSlotMat.SetColor(NeonMaterials.BaseColorProperty, SlotColor * (1f + 3f * discardFlash));
 
             for (int i = 0; i < accentMats.Length; i++)
                 accentMats[i].SetColor(NeonMaterials.EmissionColorProperty, Color.Lerp(accentBase[i], NeonPalette.Check * 2.6f, tension * 0.85f) * (1f + 0.25f * tension * pulse));
@@ -194,9 +196,8 @@ namespace Check.Game.Visuals
 
         void BuildSurface()
         {
-            var tex = TableArt.Surface(HalfWidth, HalfDepth, DrawPilePosition, DiscardPosition);
-            surfaceMat = NeonMaterials.CreateLitOpaque("Check_TableSurface", new Color(0.030f, 0.028f, 0.060f), 0.35f, 0.90f, SurfaceEmission);
-            surfaceMat.SetTexture("_EmissionMap", tex);
+            surfaceMat = NeonMaterials.CreateLitOpaque("Check_TableSurface", Color.white, 0f, 0.18f, Color.black);
+            surfaceMat.SetTexture("_BaseMap", LinoleumTexture());
 
             var verts = new List<Vector3> { new Vector3(0f, TopY, 0f) };
             var uvs = new List<Vector2> { new Vector2(0.5f, 0.5f) };
@@ -301,9 +302,9 @@ namespace Check.Game.Visuals
             mesh.SetTriangles(tris, 0);
             mesh.SetTriangles(inlay, 1);
             mesh.RecalculateBounds();
-            var copper = NeonMaterials.CreateLitOpaque("Check_TableCopper", new Color(0.86f, 0.58f, 0.32f), 0.95f, 0.80f, new Color(0.07f, 0.035f, 0.012f));
-            var enamel = NeonMaterials.CreateLitOpaque("Check_TableEnamel", new Color(0.05f, 0.07f, 0.30f), 0.1f, 0.9f, new Color(0.18f, 0.32f, 1.0f) * 1.3f);
-            AddRenderer("Rim", mesh, new[] { copper, enamel }, true, true);
+            var wood = NeonMaterials.CreateLitOpaque("Check_TableWood", new Color(0.40f, 0.22f, 0.11f), 0f, 0.62f, Color.black);
+            var brass = NeonMaterials.CreateLitOpaque("Check_TableBrass", WagonDecor.Amber, 0.9f, 0.75f, WagonDecor.Amber * 0.05f);
+            AddRenderer("Rim", mesh, new[] { wood, brass }, true, true);
 
             // Tube néon (additif, couleurs par sommet pour la lueur de la place active).
             stripParams = new float[n + 1];
@@ -342,10 +343,11 @@ namespace Check.Game.Visuals
             const float margin = 0.09f;
             var tex = TableArt.Slot(CardView.Width, CardView.Height, CardAtlas.CornerRadius, margin);
             var quad = CardAtlas.BuildQuad(CardView.Width + 2f * margin, CardView.Height + 2f * margin);
-            drawSlotMat = NeonMaterials.CreateAdditive("Check_DrawSlot", tex, new Color(0.3f, 0.9f, 1f), 1);
-            discardSlotMat = NeonMaterials.CreateAdditive("Check_DiscardSlot", tex, new Color(1f, 0.62f, 0.25f), 1);
-            AddDecal("Draw Slot", quad, drawSlotMat, DrawPilePosition + Vector3.up * (TopY + 0.0015f - SurfaceY), Vector3.one);
-            AddDecal("Discard Slot", quad, discardSlotMat, DiscardPosition + Vector3.up * (TopY + 0.0015f - SurfaceY), Vector3.one);
+            drawSlotMat = NeonMaterials.CreateAdditive("Check_DrawSlot", tex, SlotColor, 1);
+            discardSlotMat = NeonMaterials.CreateAdditive("Check_DiscardSlot", tex, SlotColor, 1);
+            var scale = Vector3.one * CenterCardScale;
+            AddDecal("Draw Slot", quad, drawSlotMat, DrawPilePosition + Vector3.up * (TopY + 0.0015f - SurfaceY), scale);
+            AddDecal("Discard Slot", quad, discardSlotMat, DiscardPosition + Vector3.up * (TopY + 0.0015f - SurfaceY), scale);
         }
 
         void BuildHaloAndTension()
@@ -363,127 +365,53 @@ namespace Check.Game.Visuals
         {
             var root = new GameObject("Backdrop").transform;
             root.SetParent(transform, false);
+            accentMats = new Material[0];
+            accentBase = new Color[0];
 
-            // Sol sombre et brillant à anneaux lumineux.
-            const float floorRadius = 46f;
-            var floorMat = NeonMaterials.CreateLitOpaque("Check_Floor", new Color(0.012f, 0.012f, 0.03f), 0.4f, 0.86f, Color.white * 1.1f);
-            floorMat.SetTexture("_EmissionMap", TableArt.Floor(floorRadius));
-            var fv = new List<Vector3> { new Vector3(0f, FloorY, 0f) };
-            var fu = new List<Vector2> { new Vector2(0.5f, 0.5f) };
-            const int fs = 64;
-            for (int i = 0; i < fs; i++)
-            {
-                float a = i * Mathf.PI * 2f / fs;
-                fv.Add(new Vector3(Mathf.Cos(a) * floorRadius, FloorY, Mathf.Sin(a) * floorRadius));
-                fu.Add(new Vector2(Mathf.Cos(a) * 0.5f + 0.5f, Mathf.Sin(a) * 0.5f + 0.5f));
-            }
-            var ft = new List<int>();
-            for (int i = 0; i < fs; i++) AddTri(ft, fv, 0, 1 + i, 1 + (i + 1) % fs, Vector3.up);
-            var floor = new Mesh { name = "Check_Floor" };
-            floor.SetVertices(fv);
-            floor.SetUVs(0, fu);
-            floor.SetTriangles(ft, 0);
-            floor.RecalculateNormals();
-            floor.RecalculateBounds();
-            AddRenderer("Floor", floor, new[] { floorMat }, false, true, root);
-
-            // Accents néon partagés par le décor (ambre, cyan, magenta) : rougissent avec la tension.
-            accentBase = new[] { new Color(1.0f, 0.55f, 0.16f) * 1.5f, new Color(0.2f, 0.85f, 1.0f) * 1.4f, new Color(1.0f, 0.22f, 0.72f) * 1.4f };
-            accentMats = new Material[3];
-            for (int i = 0; i < 3; i++)
-                accentMats[i] = NeonMaterials.CreateLitOpaque("Check_DecorAccent" + i, Color.black, 0f, 0.6f, accentBase[i]);
-            var body = NeonMaterials.CreateLitOpaque("Check_DecorBody", new Color(0.10f, 0.075f, 0.11f), 0.35f, 0.62f, new Color(0.012f, 0.008f, 0.02f));
-
-            // Pied de table.
-            var ped = new MeshBuilder(4);
+            // Pied de table en bois sombre cerclé de laiton.
+            var woodDark = NeonMaterials.CreateLitOpaque("Check_PedestalWood", new Color(0.20f, 0.11f, 0.06f), 0f, 0.5f, Color.black);
+            var brass = NeonMaterials.CreateLitOpaque("Check_PedestalBrass", WagonDecor.Amber, 0.9f, 0.7f, Color.black);
+            var ped = new MeshBuilder(3);
             // Profil de bas en haut (le segment qui part d'un point prend son sous-maillage).
             ped.Lathe(new List<ProfilePoint>
             {
-                new ProfilePoint(1.95f, FloorY, 0f, 1), new ProfilePoint(1.9f, FloorY + 0.05f), new ProfilePoint(1.3f, FloorY + 0.25f),
-                new ProfilePoint(0.64f, -1.68f, 0f, 2), new ProfilePoint(0.62f, -1.6f), new ProfilePoint(0.78f, -0.98f, 0f, 1),
-                new ProfilePoint(0.75f, -0.9f), new ProfilePoint(1.2f, -0.55f), new ProfilePoint(1.6f, -0.26f),
+                new ProfilePoint(1.6f, FloorY, 0f, 1), new ProfilePoint(1.55f, FloorY + 0.06f), new ProfilePoint(1.1f, FloorY + 0.25f),
+                new ProfilePoint(0.55f, -1.68f, 0f, 2), new ProfilePoint(0.53f, -1.6f), new ProfilePoint(0.66f, -0.98f, 0f, 1),
+                new ProfilePoint(0.64f, -0.9f), new ProfilePoint(1.1f, -0.55f), new ProfilePoint(1.5f, -0.26f),
             }, 24, Vector3.zero);
-            AddRenderer("Pedestal", ped.ToMesh("Check_Pedestal"), new[] { body, accentMats[0], accentMats[1], accentMats[2] }, false, true, root);
+            AddRenderer("Pedestal", ped.ToMesh("Check_Pedestal"), new[] { woodDark, brass, brass }, false, true, root);
 
-            // Village de cases-obus néon (cases musgoum stylisées) autour de la table, visible depuis
-            // la caméra de jeu, puis grandes tours au loin (silhouettes et reflets).
-            var towers = new MeshBuilder(4);
-            var rnd = new System.Random(2026);
-            const int huts = 22;
-            for (int i = 0; i < huts; i++)
-            {
-                float ang = Mathf.Lerp(-55f, 235f, (i + (float)rnd.NextDouble() * 0.7f) / huts) * Mathf.Deg2Rad;
-                float dist = 7.6f + (float)rnd.NextDouble() * 4.5f + (i % 2) * 1.5f;
-                float height = 1.6f + (float)rnd.NextDouble() * 1.8f;
-                var pos = new Vector3(Mathf.Cos(ang) * dist, FloorY, Mathf.Sin(ang) * dist);
-                Tower(towers, pos, height, height * (0.36f + (float)rnd.NextDouble() * 0.08f), 1 + i % 3, i + 300, true);
-            }
-            const int count = 14;
-            for (int i = 0; i < count; i++)
-            {
-                float ang = Mathf.Lerp(-70f, 250f, (i + (float)rnd.NextDouble() * 0.6f) / count) * Mathf.Deg2Rad;
-                float dist = 26f + (float)rnd.NextDouble() * 14f;
-                float height = 7f + (float)rnd.NextDouble() * 10f;
-                float radius = height * (0.22f + (float)rnd.NextDouble() * 0.08f);
-                int accent = 1 + i % 3;
-                var pos = new Vector3(Mathf.Cos(ang) * dist, FloorY, Mathf.Sin(ang) * dist);
-                Tower(towers, pos, height, radius, accent, i);
-                if (rnd.NextDouble() < 0.6)
-                {
-                    // Petite tour satellite.
-                    Vector3 off = new Vector3((float)rnd.NextDouble() - 0.5f, 0f, (float)rnd.NextDouble() - 0.5f).normalized * (radius * 1.8f);
-                    Tower(towers, pos + off, height * 0.45f, radius * 0.55f, 1 + (i + 1) % 3, i + 100);
-                }
-            }
-            AddRenderer("Towers", towers.ToMesh("Check_Towers"), new[] { body, accentMats[0], accentMats[1], accentMats[2] }, false, false, root);
-
-            // Anneaux dorés flottants au fond (lentement en rotation).
-            var ringMat = new[] { accentMats[0] };
-            var ringsRoot = new GameObject("Rings").transform;
-            ringsRoot.SetParent(root, false);
-            ringsRoot.localPosition = new Vector3(0f, 8.5f, 34f);
-            ringsRoot.localRotation = Quaternion.Euler(-8f, 0f, 0f);
-            ringA = AddRenderer("Ring A", RingMesh(11f, 0.12f, 96, 24), ringMat, false, false, ringsRoot).transform;
-            ringB = AddRenderer("Ring B", RingMesh(8.2f, 0.08f, 72, 18), new[] { accentMats[2] }, false, false, ringsRoot).transform;
+            WagonDecor.Build(root, FloorY);
         }
 
-        static void Tower(MeshBuilder b, Vector3 pos, float height, float radius, int accent, int seed, bool hut = false)
+        /// <summary>Linoléum bleu pétrole : léger moucheté et fin liseré crème en retrait du bord.</summary>
+        static Texture2D LinoleumTexture()
         {
-            // Profil en obus (case musgoum), quelques bandes lumineuses et pointe néon.
-            var prof = new List<ProfilePoint>();
-            const int levels = 9;
-            float twist = (seed % 7) / 7f;
-            for (int l = 0; l < levels; l++)
+            const int size = 512;
+            var tex = new Texture2D(size, size, TextureFormat.RGBA32, true) { name = "Check_Linoleum", wrapMode = TextureWrapMode.Clamp, anisoLevel = 4 };
+            var px = new Color32[size * size];
+            var rnd = new System.Random(7);
+            // Un peu plus bleu que la palette : la lumière chaude du plafonnier le verdirait.
+            Color petrol = new Color(0.075f, 0.215f, 0.285f), cream = WagonDecor.Cream;
+            for (int y = 0; y < size; y++)
+            for (int x = 0; x < size; x++)
             {
-                bool band = hut ? (l == 2 || l == 5) : l % 2 == 1;
-                float h0 = l / (float)levels, h1 = (l + (band ? 0.9f : 1f)) / levels;
-                // Flancs bombés puis pointe (profil en puissance plutôt que cône).
-                float r0 = radius * Mathf.Pow(Mathf.Max(0.0004f, 1f - h0 * 0.97f), 0.42f);
-                float r1 = radius * Mathf.Pow(Mathf.Max(0.0004f, 1f - h1 * 0.97f), 0.42f);
-                prof.Add(new ProfilePoint(r0, h0 * height, twist, 0));
-                if (!band) continue;
-                prof.Add(new ProfilePoint(r1, h1 * height, twist, accent));
-                // Petite corniche (bande ressortie) pour l'accent.
-                prof.Add(new ProfilePoint(r1 * 1.035f, h1 * height + height * 0.01f, twist, accent));
+                float u = (x + 0.5f) / size, v = (y + 0.5f) / size;
+                float wx = (u - 0.5f) * 2f * HalfWidth, wz = (v - 0.5f) * 2f * HalfDepth;
+                float rho = TableArt.Rho(wx, wz, HalfWidth, HalfDepth);
+                float speck = ((float)rnd.NextDouble() - 0.5f) * 0.06f;
+                float grain = Mathf.PerlinNoise(u * 18f, v * 18f) * 0.05f;
+                Color c = petrol * (0.92f + speck + grain);
+                // Liseré crème (double filet) près du bord.
+                float d1 = Mathf.Abs(rho - 0.90f) * HalfWidth, d2 = Mathf.Abs(rho - 0.925f) * HalfWidth;
+                float line = Mathf.Clamp01(1f - d1 / 0.012f) * 0.55f + Mathf.Clamp01(1f - d2 / 0.006f) * 0.35f;
+                c = Color.Lerp(c, cream * 0.8f, line);
+                c.a = 1f;
+                px[y * size + x] = c;
             }
-            prof.Add(new ProfilePoint(radius * 0.16f, height, twist, accent));
-            prof.Add(new ProfilePoint(0.02f, height * 1.08f, twist, accent));
-            b.Lathe(prof, 12, pos);
-        }
-
-        static Mesh RingMesh(float radius, float thickness, int segments, int seed)
-        {
-            var b = new MeshBuilder(1);
-            for (int i = 0; i < segments; i++)
-            {
-                if ((i + seed) % 9 == 0) continue; // interruptions (glyphes)
-                float a0 = i * Mathf.PI * 2f / segments, a1 = (i + 0.82f) * Mathf.PI * 2f / segments;
-                var p0 = new Vector3(Mathf.Cos(a0), Mathf.Sin(a0), 0f) * radius;
-                var p1 = new Vector3(Mathf.Cos(a1), Mathf.Sin(a1), 0f) * radius;
-                float w = i % 4 == 0 ? thickness * 2.2f : thickness;
-                b.Box(0, (p0 + p1) * 0.5f, new Vector3(Vector3.Distance(p0, p1), w, thickness), Quaternion.Euler(0f, 0f, (a0 + a1) * 0.5f * Mathf.Rad2Deg + 90f));
-            }
-            return b.ToMesh("Check_Ring");
+            tex.SetPixels32(px);
+            tex.Apply(true, true);
+            return tex;
         }
 
         // ------------------------------------------------------------------ utilitaires

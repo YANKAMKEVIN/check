@@ -85,7 +85,7 @@ namespace Check.Game.Visuals
         {
             Bloom bloom = GetOrAdd<Bloom>(profile);
             bloom.threshold.Override(0.95f);
-            bloom.intensity.Override(0.85f);
+            bloom.intensity.Override(0.55f);
             bloom.scatter.Override(0.72f);
             bloom.clamp.Override(40f);
             bloom.tint.Override(new Color(0.92f, 0.95f, 1f));

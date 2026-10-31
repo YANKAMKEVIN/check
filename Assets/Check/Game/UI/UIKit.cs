@@ -7,10 +7,12 @@ namespace Check.Game.UI
     /// <summary>Palette et fabriques d'éléments uGUI au style « verre sombre + liseré néon ».</summary>
     public static class UIKit
     {
-        public static readonly Color Cyan = new Color(0.30f, 0.92f, 1f);
-        public static readonly Color Magenta = new Color(1f, 0.30f, 0.85f);
-        public static readonly Color Glass = new Color(0.05f, 0.06f, 0.12f, 0.78f);
-        public static readonly Color GlassStrong = new Color(0.04f, 0.04f, 0.09f, 0.92f);
+        // « Dernier Métro » : les noms historiques restent, les teintes suivent le wagon
+        // (Cyan = laiton clair des liserés, Magenta = bleu pétrole clair, verre = nuit bleutée).
+        public static readonly Color Cyan = new Color(0.93f, 0.74f, 0.48f);
+        public static readonly Color Magenta = new Color(0.47f, 0.78f, 0.80f);
+        public static readonly Color Glass = new Color(0.06f, 0.10f, 0.13f, 0.80f);
+        public static readonly Color GlassStrong = new Color(0.05f, 0.08f, 0.10f, 0.93f);
         public static readonly Color Text = new Color(0.90f, 0.95f, 1f);
         public static readonly Color TextDim = new Color(0.62f, 0.68f, 0.82f);
         public static readonly Color Danger = new Color(1f, 0.32f, 0.38f);
@@ -18,7 +20,7 @@ namespace Check.Game.UI
         public static readonly Color Gold = new Color(1f, 0.80f, 0.36f);
         public static readonly Color Copper = new Color(0.90f, 0.55f, 0.32f);
         public static readonly Color Amber = new Color(1f, 0.64f, 0.18f);
-        public static readonly Color Indigo = new Color(0.16f, 0.10f, 0.42f);
+        public static readonly Color Indigo = new Color(0.12f, 0.28f, 0.32f); // pétrole (liserés des badges)
         public static readonly Color Success = new Color(0.35f, 1f, 0.62f);
         /// <summary>Rouge des cœurs / carreaux, lisible sur fond sombre.</summary>
         public static readonly Color SuitRed = new Color(1f, 0.36f, 0.45f);

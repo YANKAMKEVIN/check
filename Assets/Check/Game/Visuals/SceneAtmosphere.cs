@@ -4,10 +4,10 @@ using UnityEngine.Rendering;
 namespace Check.Game.Visuals
 {
     /// <summary>
-    /// Met en place l'ambiance au runtime : caméra en perspective cadrée sur le plateau,
-    /// lumière principale à ombres douces, deux lumières d'appoint colorées (cyan / magenta),
-    /// ciel nébuleuse généré, éclairage ambiant, brouillard léger, sonde de réflexion,
-    /// poussières lumineuses et post-traitement URP (dans SceneAtmosphere.Urp.cs).
+    /// Met en place l'ambiance au runtime (« Dernier Métro ») : caméra en perspective cadrée sur le plateau,
+    /// plafonnier ambré à ombres douces au-dessus de la table, lueur froide de la ville par les fenêtres,
+    /// nuit bleutée en fond, éclairage ambiant, brouillard léger, sonde de réflexion,
+    /// poussière dans la lumière et post-traitement URP (dans SceneAtmosphere.Urp.cs).
     /// À placer une fois dans la scène (sur un objet vide). Tout est créé dans Awake.
     /// </summary>
     [DisallowMultipleComponent]
@@ -30,13 +30,13 @@ namespace Check.Game.Visuals
 
         [Header("Lumières")]
         [SerializeField] bool createLights = true;
-        [SerializeField] float sunIntensity = 1.25f;
-        [SerializeField] float accentLightIntensity = 9f;
+        [SerializeField] float sunIntensity = 1.1f;
+        [SerializeField] float accentLightIntensity = 7f;
 
         [Header("Environnement")]
-        [SerializeField] bool useNebulaSky = true;
+        [SerializeField] bool useNebulaSky = false;
         [SerializeField] bool enableFog = true;
-        [SerializeField, Range(0f, 0.08f)] float fogDensity = 0.022f;
+        [SerializeField, Range(0f, 0.08f)] float fogDensity = 0.014f;
         [SerializeField, Tooltip("Sonde de réflexion temps réel rendue une seule fois (reflets du plateau dans le cristal).")]
         bool useReflectionProbe = true;
         [SerializeField, Tooltip("Couches capturées par la sonde (excluez celle des pièces si vous en créez une).")]
@@ -84,7 +84,7 @@ namespace Check.Game.Visuals
                     targetCamera.allowHDR = true;
                     targetCamera.allowMSAA = true;
                     targetCamera.clearFlags = useNebulaSky ? CameraClearFlags.Skybox : CameraClearFlags.SolidColor;
-                    targetCamera.backgroundColor = NeonPalette.Fog;
+                    targetCamera.backgroundColor = WagonDecor.Sky;
                 }
                 SetupUrpCamera(targetCamera);
             }
@@ -159,19 +159,19 @@ namespace Check.Game.Visuals
             cam.allowHDR = true;
             cam.allowMSAA = true;
             cam.clearFlags = useNebulaSky ? CameraClearFlags.Skybox : CameraClearFlags.SolidColor;
-            cam.backgroundColor = NeonPalette.Fog;
+            cam.backgroundColor = WagonDecor.Sky;
             FrameBoard();
         }
 
         void SetupLights()
         {
-            // Lumière principale : blanc froid, haute et rasante, ombres douces.
-            var sunGo = new GameObject("Neon Sun");
+            // Lumière principale : le plafonnier, chaud, presque à la verticale de la table, ombres douces.
+            var sunGo = new GameObject("Ceiling Light");
             sunGo.transform.SetParent(transform, false);
-            sunGo.transform.rotation = Quaternion.Euler(52f, -38f, 0f);
+            sunGo.transform.rotation = Quaternion.Euler(72f, -20f, 0f);
             Sun = sunGo.AddComponent<Light>();
             Sun.type = LightType.Directional;
-            Sun.color = new Color(1f, 0.93f, 0.84f);
+            Sun.color = new Color(1f, 0.88f, 0.72f);
             Sun.intensity = sunIntensity;
             Sun.shadows = LightShadows.Soft;
             Sun.shadowStrength = 0.85f;
@@ -180,9 +180,10 @@ namespace Check.Game.Visuals
             RenderSettings.sun = Sun;
             SetupUrpLight(Sun);
 
-            // Appoints colorés : ambre (cuivre, or) au fond à droite, cyan devant à gauche (reflets du verre).
-            CreatePointLight("Accent Amber", new Vector3(5.2f, 2.8f, 4.6f), AfroPalette.NeonAmber, accentLightIntensity, 15f);
-            CreatePointLight("Accent Cyan", new Vector3(-5.2f, 2.4f, -4.4f), NeonPalette.WhiteGlow, accentLightIntensity * 0.8f, 15f);
+            // Appoints : ambre sous le plafond (boiseries, laiton), bleu froid de la ville par les fenêtres.
+            CreatePointLight("Lamp Amber", new Vector3(0f, 7.5f, 1.5f), new Color(1f, 0.72f, 0.42f), accentLightIntensity * 0.6f, 14f);
+            CreatePointLight("City Left", new Vector3(-6.0f, 2.2f, 3.0f), new Color(0.45f, 0.62f, 1f), accentLightIntensity * 0.45f, 9f);
+            CreatePointLight("City Right", new Vector3(6.0f, 2.2f, 3.0f), new Color(0.45f, 0.62f, 1f), accentLightIntensity * 0.45f, 9f);
         }
 
         void CreatePointLight(string name, Vector3 position, Color color, float intensity, float range)
@@ -209,10 +210,10 @@ namespace Check.Game.Visuals
                 RenderSettings.reflectionIntensity = 1f;
             }
 
-            // Ambiance trichromatique sombre, appliquée aussi à la sonde harmonique utilisée par URP.
-            Color sky = new Color(0.11f, 0.11f, 0.24f);
-            Color equator = new Color(0.10f, 0.05f, 0.11f);
-            Color ground = new Color(0.015f, 0.01f, 0.03f);
+            // Ambiance : nuit bleutée en haut, chaleur des boiseries au milieu, sol sombre.
+            Color sky = new Color(0.12f, 0.15f, 0.22f);
+            Color equator = new Color(0.13f, 0.10f, 0.09f);
+            Color ground = new Color(0.03f, 0.03f, 0.035f);
             RenderSettings.ambientMode = AmbientMode.Trilight;
             RenderSettings.ambientSkyColor = sky;
             RenderSettings.ambientEquatorColor = equator;
@@ -226,7 +227,7 @@ namespace Check.Game.Visuals
             RenderSettings.fog = enableFog;
             RenderSettings.fogMode = FogMode.ExponentialSquared;
             RenderSettings.fogDensity = fogDensity;
-            RenderSettings.fogColor = NeonPalette.Fog;
+            RenderSettings.fogColor = WagonDecor.Sky;
         }
 
         void SetupReflectionProbe()
@@ -266,15 +267,15 @@ namespace Check.Game.Visuals
             main.playOnAwake = true;
             main.startLifetime = new ParticleSystem.MinMaxCurve(7f, 12f);
             main.startSpeed = new ParticleSystem.MinMaxCurve(0.02f, 0.12f);
-            main.startSize = new ParticleSystem.MinMaxCurve(0.025f, 0.075f);
+            main.startSize = new ParticleSystem.MinMaxCurve(0.015f, 0.04f);
             main.startColor = new ParticleSystem.MinMaxGradient(
-                new Color(1f, 0.75f, 0.35f, 0.9f), new Color(0.45f, 0.95f, 1f, 0.9f));
-            main.maxParticles = 140;
+                new Color(1f, 0.82f, 0.6f, 0.35f), new Color(1f, 0.9f, 0.75f, 0.25f));
+            main.maxParticles = 50;
             main.simulationSpace = ParticleSystemSimulationSpace.World;
             main.gravityModifier = -0.004f; // dérive très lente vers le haut
 
             var emission = ps.emission;
-            emission.rateOverTime = 11f;
+            emission.rateOverTime = 4f;
 
             var shape = ps.shape;
             shape.shapeType = ParticleSystemShapeType.Box;
