@@ -14,9 +14,17 @@ namespace Check.Game.UI
         public static readonly Color Text = new Color(0.90f, 0.95f, 1f);
         public static readonly Color TextDim = new Color(0.62f, 0.68f, 0.82f);
         public static readonly Color Danger = new Color(1f, 0.32f, 0.38f);
+        // Afrofuturisme : indigo profond, or / cuivre, ambre.
+        public static readonly Color Gold = new Color(1f, 0.80f, 0.36f);
+        public static readonly Color Copper = new Color(0.90f, 0.55f, 0.32f);
+        public static readonly Color Amber = new Color(1f, 0.64f, 0.18f);
+        public static readonly Color Indigo = new Color(0.16f, 0.10f, 0.42f);
+        public static readonly Color Success = new Color(0.35f, 1f, 0.62f);
+        /// <summary>Rouge des cœurs / carreaux, lisible sur fond sombre.</summary>
+        public static readonly Color SuitRed = new Color(1f, 0.36f, 0.45f);
 
         static Font font;
-        static Sprite rounded, roundedOutline, glow;
+        static Sprite rounded, roundedOutline, glow, circle;
 
         public static Font Font
         {
@@ -31,6 +39,8 @@ namespace Check.Game.UI
         public static Sprite Rounded => rounded != null ? rounded : (rounded = MakeRounded(64, 22, false));
         public static Sprite RoundedOutline => roundedOutline != null ? roundedOutline : (roundedOutline = MakeRounded(64, 22, true));
         public static Sprite Glow => glow != null ? glow : (glow = MakeGlow(64));
+        /// <summary>Disque plein antialiasé (avatars, pastilles).</summary>
+        public static Sprite Circle => circle != null ? circle : (circle = MakeRounded(128, 64, false));
 
         static Sprite MakeRounded(int size, int radius, bool outlineOnly)
         {
