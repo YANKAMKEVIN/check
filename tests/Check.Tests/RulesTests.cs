@@ -600,5 +600,19 @@ namespace Check.Tests
             Assert.AreEqual(r.DrawPileCount, copy.DrawPileCount);
             Assert.AreEqual(r.Top, copy.Top);
         }
+
+        /// <summary>
+        /// Régression : deux positions identiques pour le siège 0 (mains adverses et pioche permutées)
+        /// doivent donner la même redistribution à graine égale.
+        /// </summary>
+        [Test]
+        public void RedealHiddenCards_DoesNotDependOnHiddenPlacement()
+        {
+            var a = Pos("9H KD", "6C 6D", "8C 8D", "5H", "10C 10D 10H 10S");
+            var b = Pos("9H KD", "10S 8D", "10C 6C", "5H", "8C 6D 10D 10H");
+            a.RedealHiddenCards(0, new SystemRandom(5));
+            b.RedealHiddenCards(0, new SystemRandom(5));
+            for (int s = 0; s < 3; s++) CollectionAssert.AreEqual(a.Hand(s), b.Hand(s));
+        }
     }
 }
