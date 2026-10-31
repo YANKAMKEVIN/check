@@ -4,6 +4,8 @@ Jeu de cartes camerounais « Check » en 3D, pour Android et iOS (macOS pour tes
 
 Dernière mise à jour : 2026-10-31.
 
+Dépôt : https://github.com/YANKAMKEVIN/check (privé), branche `main` suivie sur `origin`.
+
 ## Décisions prises (avec Kevin)
 
 | Sujet | Décision |
