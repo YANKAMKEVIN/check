@@ -128,7 +128,88 @@ namespace Check.Game.Visuals
                 for (float z = ZStart; z < ZEnd; z += 2f * (WindowLength + PillarLength))
                     b.Box(6, new Vector3(s * (WallX - 0.1f), LintelY - 0.3f, z + PillarLength * 0.5f), new Vector3(0.08f, 0.14f, 0.18f), Quaternion.identity);
 
-            Add("Interior", b.ToMesh("Wagon_Interior"), new[] { wall, lower, wood, brass, leather, floor, lamp, glass }, true);
+            if (DecorStyles.Current == DecorStyle.Tout3D) Texture3D(b, wall, wood, leather, floor);
+            var mesh = b.ToMesh("Wagon_Interior");
+            if (DecorStyles.Current == DecorStyle.Tout3D) BoxProjectUVs(mesh, 0.35f);
+            Add("Interior", mesh, new[] { wall, lower, wood, brass, leather, floor, lamp, glass }, true);
+        }
+
+        /// <summary>
+        /// Prototype « tout 3D » : vraies matières (bois verni, cuir capitonné) générées d'après l'image cible,
+        /// plafond voûté crème et suspension Art déco au-dessus de la table.
+        /// </summary>
+        void Texture3D(MeshBuilder b, Material wall, Material wood, Material leather, Material floor)
+        {
+            var woodTex = Resources.Load<Texture2D>("Proto/bois");
+            var leatherTex = Resources.Load<Texture2D>("Proto/cuir");
+            if (woodTex != null)
+            {
+                foreach (var m in new[] { wall, wood })
+                {
+                    m.SetTexture("_BaseMap", woodTex);
+                    m.SetColor("_BaseColor", m == wall ? new Color(0.95f, 0.85f, 0.78f) : new Color(0.75f, 0.68f, 0.62f));
+                    // Un objet ne reçoit que 4 lumières : une lueur chaude simule les appliques sur les boiseries.
+                    m.SetTexture("_EmissionMap", woodTex);
+                    m.SetColor("_EmissionColor", new Color(1f, 0.75f, 0.5f) * (m == wall ? 0.45f : 0.3f));
+                    m.EnableKeyword("_EMISSION");
+                }
+            }
+            if (leatherTex != null)
+            {
+                leather.SetTexture("_BaseMap", leatherTex);
+                leather.SetColor("_BaseColor", new Color(1.1f, 0.95f, 0.95f));
+                leather.SetTexture("_EmissionMap", leatherTex);
+                leather.SetColor("_EmissionColor", new Color(1f, 0.8f, 0.7f) * 0.35f);
+                leather.EnableKeyword("_EMISSION");
+            }
+            floor.SetColor("_BaseColor", new Color(0.13f, 0.15f, 0.16f));
+            // Appliques allumées le long des parois et suspension au-dessus de la table.
+            for (int s = -1; s <= 1; s += 2)
+                for (float z = ZStart + 2f; z < ZEnd; z += 6f)
+                    PointLight($"Sconce{s}_{z}", new Vector3(s * (WallX - 0.6f), LintelY - 0.4f, z), new Color(1f, 0.72f, 0.42f), 1.6f, 11f);
+            PointLight("Pendant", new Vector3(0f, CeilingY - 0.4f, 1.5f), new Color(1f, 0.8f, 0.55f), 6f, 22f);
+            // Plafond voûté (facettes) au-dessus des fenêtres.
+            const int arcs = 10;
+            float len = ZEnd - ZStart, midZ = (ZStart + ZEnd) * 0.5f;
+            for (int i = 0; i < arcs; i++)
+            {
+                float a0 = Mathf.PI * i / arcs, a1 = Mathf.PI * (i + 1) / arcs;
+                var p0 = new Vector3(-Mathf.Cos(a0) * WallX, CeilingY + Mathf.Sin(a0) * 1.2f, 0f);
+                var p1 = new Vector3(-Mathf.Cos(a1) * WallX, CeilingY + Mathf.Sin(a1) * 1.2f, 0f);
+                var c = (p0 + p1) * 0.5f;
+                float w = Vector3.Distance(p0, p1);
+                float ang = Mathf.Atan2(p1.y - p0.y, p1.x - p0.x) * Mathf.Rad2Deg;
+                b.Box(i % 3 == 1 ? 2 : 0, new Vector3(c.x, c.y, midZ), new Vector3(w + 0.02f, 0.12f, len), Quaternion.Euler(0f, 0f, ang));
+            }
+        }
+
+        void PointLight(string name, Vector3 pos, Color color, float intensity, float range)
+        {
+            var go = new GameObject(name);
+            go.transform.SetParent(transform, false);
+            go.transform.localPosition = pos;
+            var l = go.AddComponent<Light>();
+            l.type = LightType.Point;
+            l.color = color;
+            l.intensity = intensity;
+            l.range = range;
+            l.shadows = LightShadows.None;
+        }
+
+        /// <summary>UV projetées selon l'axe dominant de chaque face (les boîtes n'en ont pas).</summary>
+        static void BoxProjectUVs(Mesh mesh, float scale)
+        {
+            var v = mesh.vertices;
+            var n = mesh.normals;
+            var uv = new Vector2[v.Length];
+            for (int i = 0; i < v.Length; i++)
+            {
+                var a = new Vector3(Mathf.Abs(n[i].x), Mathf.Abs(n[i].y), Mathf.Abs(n[i].z));
+                if (a.x >= a.y && a.x >= a.z) uv[i] = new Vector2(v[i].z, v[i].y) * scale;
+                else if (a.y >= a.z) uv[i] = new Vector2(v[i].x, v[i].z) * scale;
+                else uv[i] = new Vector2(v[i].x, v[i].y) * scale;
+            }
+            mesh.uv = uv;
         }
 
         static void Pole(MeshBuilder b, Vector3 basePos)

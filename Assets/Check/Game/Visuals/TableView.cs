@@ -381,7 +381,23 @@ namespace Check.Game.Visuals
             }, 24, Vector3.zero);
             AddRenderer("Pedestal", ped.ToMesh("Check_Pedestal"), new[] { woodDark, brass, brass }, false, true, root);
 
-            WagonDecor.Build(root, FloorY);
+            switch (DecorStyles.Current)
+            {
+                case DecorStyle.Hybride:
+                    PaintedScene.Build(root);
+                    break;
+                case DecorStyle.Tout3D:
+                    var wagon = WagonDecor.Build(root, FloorY);
+                    // Wagon agrandi pour que la caméra, plus basse, reste sous le plafond.
+                    const float k = 1.7f;
+                    wagon.transform.localScale = Vector3.one * k;
+                    wagon.transform.localPosition = new Vector3(0f, FloorY * (1f - k), 0f);
+                    Mannequins.Build(root);
+                    break;
+                default:
+                    WagonDecor.Build(root, FloorY);
+                    break;
+            }
         }
 
         /// <summary>Linoléum bleu pétrole : léger moucheté et fin liseré crème en retrait du bord.</summary>

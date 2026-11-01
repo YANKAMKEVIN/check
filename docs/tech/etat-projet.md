@@ -72,7 +72,8 @@ L'APK Android : `Builds/Android/Check.apk` (36 Mo). Toujours passer `-buildTarge
 ## Prochaines étapes
 
 - [ ] Kevin valide les règles marquées « à valider » dans `docs/regles.md`
-- [ ] Kevin choisit une image cible (`docs/captures/cible/cible_1..3.jpg`, générées avec Kling / Nano Banana Pro le 2026-11-01) pour la refonte visuelle poussée : vraies textures et modèles 3D, figures illustrées, adversaires assis, interface Art déco
+- [x] Image cible choisie par Kevin : `docs/captures/cible/cible_3.jpg` (vue dans l'axe du wagon, enseignes néon, adversaires assis)
+- [ ] Kevin choisit l'approche de la refonte, d'après les prototypes de la branche `proto-rendus` (`-check-style hybride|3d`, captures `docs/captures/proto/`) : hybride = wagon peint + personnages illustrés détourés (assets générés dans `Visuals/Resources/Proto/`), tout 3D = wagon texturé + personnages en volumes. Le prototype hybride ne gère que 4 joueurs (3 personnages fixes)
 - [ ] Kevin teste le décor « Dernier Métro » sur téléphone (vérifié sur Mac et sur le Galaxy A17, cartes Art déco comprises). Le S24 n'est plus disponible : l'A17 se partage entre sessions, à demander au coordinateur (session kevinyankam-91)
 - [x] Cartes accordées au métro (Art déco) : dos bleu nuit « CHECK », figures en personnel de gare, jokers saltimbanques
 - [ ] Passe QA complète sur téléphone (partie entière à 4 et à 10, Valet, Check oublié, glisser vers le tas, haptique, mesure des fps)
