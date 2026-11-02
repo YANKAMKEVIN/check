@@ -97,7 +97,7 @@ namespace Check.Game.Match
             roundEndRaised = false;
             reconciled = false;
             aiResult = null;
-            table.Setup(names.Length);
+            table.Setup(names.Length, Array.ConvertAll(names, OpponentNames.IsFemale));
             ApplySpeed();
         }
 

@@ -102,9 +102,17 @@ namespace Check.Game.View
             sfx = sounds;
         }
 
-        /// <summary>Nouvelle partie : table vide, places pour <paramref name="players"/> joueurs.</summary>
-        public void Setup(int players)
+        bool[] female;
+
+        /// <summary>
+        /// Nouvelle partie : table vide, places pour <paramref name="players"/> joueurs. <paramref name="isFemale"/>
+        /// (par joueur) choisit les personnages assis ; sans lui, on garde ceux de la partie en cours.
+        /// </summary>
+        public void Setup(int players, bool[] isFemale = null)
         {
+            if (isFemale != null) female = isFemale;
+            else if (female == null || female.Length != players) female = DefaultGenders(players);
+            table.SetPlayers(female);
             StopAllCoroutines();
             running = false;
             queue.Clear();
@@ -124,6 +132,13 @@ namespace Check.Game.View
             pileCount = Card.DeckSize;
             RefreshPile();
             table.SetTension(0);
+        }
+
+        static bool[] DefaultGenders(int players)
+        {
+            var g = new bool[players];
+            for (int i = 0; i < players; i++) g[i] = i % 2 == 0;
+            return g;
         }
 
         public int HandCount(int player) => player >= 0 && player < hands.Length ? hands[player].Count : 0;
@@ -214,11 +229,16 @@ namespace Check.Game.View
                 case GameEventKind.TurnStarted:
                     ActivePlayer = ev.Player;
                     table.SetActiveSeat(TableLayout.Seat(ev.Player, playerCount).BadgePoint);
+                    table.SetActivePlayer(ev.Player);
                     if (ev.Player == HumanId) sfx.Play(Sfx.YourTurn, 0.6f);
                     return Wait(0.12f);
-                case GameEventKind.Played: return PlayCards(ev.Player, e.Cards);
+                case GameEventKind.Played:
+                    table.ReactPlayer(ev.Player, SeatReaction.Played);
+                    return PlayCards(ev.Player, e.Cards);
                 case GameEventKind.PlayedUnder: return PlayUnder(ev.Player, e.Cards);
-                case GameEventKind.Drew: return DrawCards(ev.Player, e.Cards, 0.13f, 0.34f);
+                case GameEventKind.Drew:
+                    table.ReactPlayer(ev.Player, SeatReaction.Drew);
+                    return DrawCards(ev.Player, e.Cards, 0.13f, 0.34f);
                 case GameEventKind.PenaltyDrawn:
                     PendingDraw = 0;
                     table.SetTension(0);
@@ -248,9 +268,11 @@ namespace Check.Game.View
                     if (ev.Player >= 0 && ev.Player < Qualified.Length) Qualified[ev.Player] = true;
                     sfx.Play(Sfx.Games);
                     table.PlayGames(SeatPoint(ev.Player));
+                    table.ReactPlayer(ev.Player, SeatReaction.Finished);
                     return Wait(0.8f);
                 case GameEventKind.Eliminated:
                     if (ev.Player >= 0 && ev.Player < Eliminated.Length) Eliminated[ev.Player] = true;
+                    table.ReactPlayer(ev.Player, SeatReaction.Eliminated);
                     ActivePlayer = -1;
                     sfx.Play(Sfx.Eliminated);
                     return Wait(1.1f);
@@ -817,7 +839,11 @@ namespace Check.Game.View
         public void ResetTo(Check.Core.Match match)
         {
             Setup(match.PlayerCount);
-            foreach (var p in match.Eliminated) Eliminated[p] = true;
+            foreach (var p in match.Eliminated)
+            {
+                Eliminated[p] = true;
+                table.ReactPlayer(p, SeatReaction.Eliminated);
+            }
             var round = match.Round;
             if (round == null) return;
             for (int s = 0; s < round.SeatCount; s++)

@@ -73,6 +73,16 @@ namespace Check.Game.Visuals
             haloAlpha = haloAlphaTarget;
         }
 
+        PaintedScene painted;
+
+        /// <summary>Nouvelle partie : un personnage assis par adversaire (index 0 = joueur humain, ignoré).</summary>
+        public void SetPlayers(bool[] female) { if (painted != null) painted.SetPlayers(female); }
+
+        /// <summary>Le personnage dont c'est le tour se redresse ; -1 : personne.</summary>
+        public void SetActivePlayer(int playerId) { if (painted != null) painted.SetActive(playerId); }
+
+        public void ReactPlayer(int playerId, SeatReaction reaction) { if (painted != null) painted.React(playerId, reaction); }
+
         /// <summary>Indique au décor à qui est le tour (halo, lumière…). Seat = place à table, n = joueurs.</summary>
         public void SetActiveSeat(Vector3 seatPosition)
         {
@@ -381,23 +391,8 @@ namespace Check.Game.Visuals
             }, 24, Vector3.zero);
             AddRenderer("Pedestal", ped.ToMesh("Check_Pedestal"), new[] { woodDark, brass, brass }, false, true, root);
 
-            switch (DecorStyles.Current)
-            {
-                case DecorStyle.Hybride:
-                    PaintedScene.Build(root);
-                    break;
-                case DecorStyle.Tout3D:
-                    var wagon = WagonDecor.Build(root, FloorY);
-                    // Wagon agrandi pour que la caméra, plus basse, reste sous le plafond.
-                    const float k = 1.7f;
-                    wagon.transform.localScale = Vector3.one * k;
-                    wagon.transform.localPosition = new Vector3(0f, FloorY * (1f - k), 0f);
-                    Mannequins.Build(root);
-                    break;
-                default:
-                    WagonDecor.Build(root, FloorY);
-                    break;
-            }
+            if (DecorStyles.Painted) painted = PaintedScene.Build(root);
+            else WagonDecor.Build(root, FloorY);
         }
 
         /// <summary>Linoléum bleu pétrole : léger moucheté et fin liseré crème en retrait du bord.</summary>

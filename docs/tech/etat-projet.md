@@ -1,6 +1,6 @@
 # Check — état du projet
 
-Jeu de cartes camerounais « Check » en 3D, pour Android et iOS (macOS pour tester). Décor « Dernier Métro » (wagon rétro aménagé en salon qui traverse une ville la nuit), tout généré par code.
+Jeu de cartes camerounais « Check » en 3D, pour Android et iOS (macOS pour tester). Décor « Dernier Métro » (wagon rétro aménagé en salon qui traverse une ville la nuit) : wagon peint en fond, adversaires illustrés assis autour de la table 3D.
 
 Dernière mise à jour : 2026-10-31.
 
@@ -73,7 +73,9 @@ L'APK Android : `Builds/Android/Check.apk` (36 Mo). Toujours passer `-buildTarge
 
 - [ ] Kevin valide les règles marquées « à valider » dans `docs/regles.md`
 - [x] Image cible choisie par Kevin : `docs/captures/cible/cible_3.jpg` (vue dans l'axe du wagon, enseignes néon, adversaires assis)
-- [ ] Kevin choisit l'approche de la refonte, d'après les prototypes de la branche `proto-rendus` (`-check-style hybride|3d`, captures `docs/captures/proto/`) : hybride = wagon peint + personnages illustrés détourés (assets générés dans `Visuals/Resources/Proto/`), tout 3D = wagon texturé + personnages en volumes. Le prototype hybride ne gère que 4 joueurs (3 personnages fixes)
+- [x] Refonte « hybride » choisie par Kevin (2026-11-02) et faite : décor peint par défaut, 9 personnages illustrés, réactions, 2 à 10 joueurs ; recette Mac OK (captures `docs/captures/peint/`). Le prototype « tout 3D » a été écarté (visible dans l'historique, commit 0567c7a)
+- [ ] Vérifier le décor peint sur téléphone (pas encore fait : le coordinateur de l'A17, session kevinyankam-91, n'existe plus ; demander à Kevin qui attribue l'A17)
+- [ ] Plus de portraits masculins (4 seulement : à 9 adversaires, des voyageuses remplacent des hommes) ; le grand-père a été refusé par le filtre du générateur
 - [ ] Kevin teste le décor « Dernier Métro » sur téléphone (vérifié sur Mac et sur le Galaxy A17, cartes Art déco comprises). Le S24 n'est plus disponible : l'A17 se partage entre sessions, à demander au coordinateur (session kevinyankam-91)
 - [x] Cartes accordées au métro (Art déco) : dos bleu nuit « CHECK », figures en personnel de gare, jokers saltimbanques
 - [ ] Passe QA complète sur téléphone (partie entière à 4 et à 10, Valet, Check oublié, glisser vers le tas, haptique, mesure des fps)

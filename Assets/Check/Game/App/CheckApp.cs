@@ -63,11 +63,11 @@ namespace Check.Game.App
             mainCamera.allowMSAA = true;
             camGo.AddComponent<AudioListener>();
             tableCamera = camGo.AddComponent<TableCamera>();
-            if (DecorStyles.LowCamera)
+            if (DecorStyles.Painted)
             {
-                // Prototypes de refonte : caméra plus rasante, comme l'image cible.
+                // Décor peint : caméra plus rasante, comme l'image cible, avec de la place pour les têtes.
                 tableCamera.Pitch = 36f;
-                tableCamera.Frame = new Rect(0.14f, 0.31f, 0.72f, 0.36f); // place pour les têtes des adversaires
+                tableCamera.Frame = new Rect(0.14f, 0.31f, 0.72f, 0.36f);
                 tableCamera.Refit();
             }
 
@@ -82,7 +82,7 @@ namespace Check.Game.App
             atmosphere.ManageCameraFraming = false;
             atmosphere.SetTargetCamera(mainCamera);
             atmoGo.SetActive(true);
-            if (DecorStyles.Current == DecorStyle.Hybride) RenderSettings.fog = false; // le fond peint a sa propre profondeur
+            if (DecorStyles.Painted) RenderSettings.fog = false; // le fond peint a sa propre profondeur
 
             sfx = new GameObject("Sound").AddComponent<SoundBank>();
             sfx.transform.SetParent(transform, false);

@@ -87,6 +87,14 @@ namespace Check.Game.Match
             "Ngo Bilong", "Djibril", "Tchoupo", "Mola Bertrand",
         };
 
+        static readonly HashSet<string> Female = new HashSet<string>
+        {
+            "Mami Ngono", "Aïssatou", "Tata Odile", "Chantal", "Abena", "Nadège", "Fadimatou", "Mama Thérèse", "Ngo Bilong",
+        };
+
+        /// <summary>Prénom féminin : l'adversaire est alors représenté par une voyageuse.</summary>
+        public static bool IsFemale(string name) => name != null && Female.Contains(name);
+
         /// <summary>Tire <paramref name="count"/> noms distincts.</summary>
         public static string[] Pick(int count, System.Random rng)
         {

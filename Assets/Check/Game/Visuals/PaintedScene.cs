@@ -1,24 +1,64 @@
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Rendering;
 
 namespace Check.Game.Visuals
 {
     /// <summary>
-    /// Prototype « hybride » : le wagon peint (image générée d'après la cible n° 3) remplit le fond de l'écran,
-    /// et les adversaires illustrés, détourés, sont assis autour de la table 3D. La table les masque à la taille.
+    /// Décor peint (d'après l'image cible n° 3) : le wagon peint remplit le fond de l'écran, et chaque adversaire est
+    /// un personnage illustré, détouré, assis derrière la table 3D qui le masque à la taille. Les personnages
+    /// respirent, se redressent quand c'est leur tour et réagissent aux coups (pose, pioche, « Games », élimination).
     /// </summary>
     public sealed class PaintedScene : MonoBehaviour
     {
         const float BackdropDistance = 45f;
-        // Par personnage (gauche, fond, droite) : hauteur de l'image en unités monde, et hauteur des mains
-        // dans l'image (0 = bas, 1 = haut), posée juste au-dessus du plateau.
-        static readonly float[] FigureHeight = { 4.0f, 4.6f, 4.0f };
-        static readonly float[] HandsFraction = { 0.42f, 0.52f, 0.42f };
+
+        /// <summary>Personnage illustré (Resources/Painted/perso_N) : genre, sens du regard (+1 vers la droite de
+        /// l'image, -1 vers la gauche, 0 de face), hauteur des mains dans l'image (0 = bas) et hauteur en unités monde.</summary>
+        readonly struct Portrait
+        {
+            public readonly int Index;
+            public readonly bool Female;
+            public readonly int Facing;
+            public readonly float Hands, Height;
+
+            public Portrait(int index, bool female, int facing, float hands = 0.42f, float height = 4f)
+            {
+                Index = index; Female = female; Facing = facing; Hands = hands; Height = height;
+            }
+        }
+
+        static readonly Portrait[] Cast =
+        {
+            new Portrait(1, false, 1),               // chef de gare
+            new Portrait(2, true, 0, 0.52f, 4.6f),  // voyageuse au chapeau cloche (en pied, de face)
+            new Portrait(3, false, -1),              // contrôleur
+            // Les suivants sont cadrés plus en pied : hauteur choisie pour garder la même taille de tête.
+            new Portrait(4, true, 1, 0.66f, 6.8f),   // dame en satin émeraude
+            new Portrait(5, true, 1, 0.55f, 5.2f),   // maman au foulard en pagne
+            new Portrait(6, true, 1, 0.55f, 5.2f),   // reporter au béret
+            new Portrait(7, true, 1, 0.59f, 5.7f),   // jeune femme au voile indigo
+            new Portrait(8, false, 1, 0.55f, 5.2f),  // gentleman au feutre
+            new Portrait(9, false, 1, 0.56f, 5.3f),  // jeune gars à la casquette
+        };
+
+        sealed class Figure
+        {
+            public Transform T;
+            public Material Mat;
+            public Portrait P;
+            public Vector3 Base, ToCenter;
+            public float Width, Height, Phase, Lift, Glow = 1f, Play, Draw, Hop, Out;
+            public bool Mirror, Eliminated;
+        }
+
+        static readonly Dictionary<int, Texture2D> textures = new Dictionary<int, Texture2D>();
+        static readonly System.Random rng = new System.Random();
 
         Transform backdrop;
         float backdropAspect = 16f / 9f;
-        Transform[] figures;
-        float[] phase;
+        Figure[] seats = new Figure[0];
+        int active = -1;
 
         public static PaintedScene Build(Transform parent)
         {
@@ -26,13 +66,13 @@ namespace Check.Game.Visuals
             go.transform.SetParent(parent, false);
             var s = go.AddComponent<PaintedScene>();
             s.BuildBackdrop();
-            s.BuildFigures();
             return s;
         }
 
         static Material Painted(string name, Texture2D tex, bool transparent)
         {
             // Couleur de base noire, image en émission : la peinture garde ses propres lumières.
+            // Les personnages sont prémultipliés (RVB nul là où l'image est transparente).
             var m = transparent
                 ? NeonMaterials.CreateLitTransparent(name, new Color(0f, 0f, 0f, 1f), 0f, 0f, Color.white)
                 : NeonMaterials.CreateLitOpaque(name, Color.black, 0f, 0f, Color.white);
@@ -44,31 +84,102 @@ namespace Check.Game.Visuals
 
         void BuildBackdrop()
         {
-            var tex = Resources.Load<Texture2D>("Proto/fond");
-            if (tex == null) { Debug.LogError("[Check] Proto/fond introuvable"); return; }
+            var tex = Resources.Load<Texture2D>("Painted/fond");
+            if (tex == null) { Debug.LogError("[Check] Painted/fond introuvable"); return; }
             backdropAspect = (float)tex.width / tex.height;
-            backdrop = Quad("Backdrop", Painted("Proto_Backdrop", tex, false));
+            backdrop = Quad("Backdrop", Painted("Painted_Backdrop", tex, false));
             backdrop.SetParent(transform, false);
         }
 
-        void BuildFigures()
+        static Texture2D Load(int index)
         {
-            figures = new Transform[3];
-            phase = new float[3];
-            for (int i = 0; i < 3; i++)
+            if (!textures.TryGetValue(index, out var tex))
             {
-                var tex = Resources.Load<Texture2D>($"Proto/perso_{i + 1}");
-                if (tex == null) { Debug.LogError($"[Check] Proto/perso_{i + 1} introuvable"); continue; }
-                var f = Quad($"Figure{i + 1}", Painted($"Proto_Figure{i + 1}", tex, true));
-                f.SetParent(transform, false);
-                float w = FigureHeight[i] * tex.width / tex.height;
-                f.localScale = new Vector3(w, FigureHeight[i], 1f);
-                var spot = DecorStyles.OpponentSpot(i + 1, 4);
-                f.localPosition = spot + Vector3.up * (FigureHeight[i] * (0.5f - HandsFraction[i]) + 0.05f);
-                figures[i] = f;
-                phase[i] = i * 2.1f;
+                tex = Resources.Load<Texture2D>($"Painted/perso_{index}");
+                if (tex == null) Debug.LogWarning($"[Check] Painted/perso_{index} introuvable");
+                textures[index] = tex;
+            }
+            return tex;
+        }
+
+        // ------------------------------------------------------------------ places
+
+        /// <summary>Assied un personnage par adversaire, de son genre quand c'est possible, sans doublon.</summary>
+        public void SetPlayers(bool[] female)
+        {
+            foreach (var f in seats) if (f != null) Destroy(f.T.gameObject);
+            int n = female?.Length ?? 0;
+            seats = new Figure[n];
+            active = -1;
+            var free = new List<Portrait>();
+            foreach (var p in Cast) if (Load(p.Index) != null) free.Add(p);
+            if (free.Count == 0) return;
+            for (int i = free.Count - 1; i > 0; i--) { int k = rng.Next(i + 1); (free[i], free[k]) = (free[k], free[i]); }
+            var all = new List<Portrait>(free);
+
+            for (int id = 1; id < n; id++)
+            {
+                if (free.Count == 0) free.AddRange(all); // plus d'adversaires que de portraits : on recommence
+                var spot = DecorStyles.OpponentSpot(id, n);
+                // De face de préférence au fond, de trois quarts sur les côtés ; sinon le premier du bon genre.
+                bool center = Mathf.Abs(spot.x) < 1.2f;
+                int pick = -1;
+                for (int pass = 0; pass < 3 && pick < 0; pass++)
+                    for (int k = 0; k < free.Count && pick < 0; k++)
+                    {
+                        var p = free[k];
+                        bool genre = p.Female == female[id];
+                        bool fits = (p.Facing == 0) == center;
+                        if ((pass == 0 && genre && fits) || (pass == 1 && genre) || pass == 2) pick = k;
+                    }
+                seats[id] = Seat(free[pick], spot, id);
+                free.RemoveAt(pick);
             }
         }
+
+        Figure Seat(Portrait p, Vector3 spot, int id)
+        {
+            var tex = Load(p.Index);
+            // Places proches de la caméra (parties à beaucoup de joueurs) : plus petits et plus écartés,
+            // pour ne pas masquer la table.
+            float near = Mathf.InverseLerp(2.5f, -1.5f, spot.z);
+            float size = 1f - 0.3f * near;
+            spot.x *= 1f + 0.15f * near;
+            var mat = Painted($"Painted_Figure{id}", tex, true);
+            var t = Quad($"Opponent{id}", mat);
+            t.SetParent(transform, false);
+            var toCenter = new Vector3(0f, 0f, 0.55f) - spot;
+            toCenter.y = 0f;
+            var f = new Figure
+            {
+                T = t, Mat = mat, P = p, ToCenter = toCenter.normalized,
+                Width = p.Height * size * tex.width / tex.height,
+                Height = p.Height * size,
+                Base = spot + Vector3.up * (p.Height * size * (0.5f - p.Hands) + 0.05f),
+                Phase = id * 2.1f,
+                // Chacun regarde vers le centre de la table : on retourne l'image si besoin.
+                Mirror = p.Facing * spot.x > 0f,
+            };
+            t.localPosition = f.Base;
+            return f;
+        }
+
+        public void SetActive(int playerId) => active = playerId;
+
+        public void React(int playerId, SeatReaction reaction)
+        {
+            if (playerId <= 0 || playerId >= seats.Length || seats[playerId] == null) return;
+            var f = seats[playerId];
+            switch (reaction)
+            {
+                case SeatReaction.Played: f.Play = 1f; break;
+                case SeatReaction.Drew: f.Draw = 1f; break;
+                case SeatReaction.Finished: f.Hop = 1f; break;
+                case SeatReaction.Eliminated: f.Eliminated = true; break;
+            }
+        }
+
+        // ------------------------------------------------------------------ rendu
 
         static Transform Quad(string name, Material mat)
         {
@@ -98,19 +209,41 @@ namespace Check.Game.Visuals
                 backdrop.SetPositionAndRotation(ct.position + ct.forward * BackdropDistance, ct.rotation);
                 backdrop.localScale = new Vector3(w, h, 1f);
             }
-            if (figures == null) return;
-            float t = Time.time;
-            for (int i = 0; i < figures.Length; i++)
+
+            float t = Time.time, dt = Time.deltaTime;
+            for (int id = 1; id < seats.Length; id++)
             {
-                var f = figures[i];
+                var f = seats[id];
                 if (f == null) continue;
-                // Pivot vertical seulement, tourné vers la caméra ; légère respiration.
-                var look = f.position - ct.position;
+                bool isActive = id == active && !f.Eliminated;
+                f.Lift = Mathf.MoveTowards(f.Lift, isActive ? 1f : 0f, dt * 4f);
+                f.Out = Mathf.MoveTowards(f.Out, f.Eliminated ? 1f : 0f, dt * 1.5f);
+                f.Play = Mathf.MoveTowards(f.Play, 0f, dt * 2.6f);
+                f.Draw = Mathf.MoveTowards(f.Draw, 0f, dt * 2.2f);
+                f.Hop = Mathf.MoveTowards(f.Hop, 0f, dt * 1.2f);
+
+                // Se pencher vers la table pour poser, plonger un peu pour piocher, sautiller sur « Games ».
+                float lean = Mathf.Sin(f.Play * Mathf.PI) * 0.28f;
+                float dip = Mathf.Sin(f.Draw * Mathf.PI) * 0.1f;
+                float hop = Mathf.Abs(Mathf.Sin(f.Hop * Mathf.PI * 3f)) * f.Hop * 0.35f;
+                float breath = Mathf.Sin(t * 1.3f + f.Phase);
+                f.T.localPosition = f.Base + f.ToCenter * lean
+                    + Vector3.up * (f.Lift * 0.12f - dip + hop - f.Out * 0.35f + breath * 0.01f);
+
+                // Pivot vertical seulement, tourné vers la caméra.
+                var look = f.T.position - ct.position;
                 look.y = 0f;
-                if (look.sqrMagnitude > 1e-4f) f.rotation = Quaternion.LookRotation(look.normalized, Vector3.up);
-                float breath = Mathf.Sin(t * 1.3f + phase[i]);
-                var s = f.localScale;
-                f.localScale = new Vector3(s.x, FigureHeight[i] * (1f + breath * 0.006f), 1f);
+                if (look.sqrMagnitude > 1e-4f) f.T.rotation = Quaternion.LookRotation(look.normalized, Vector3.up);
+                f.T.localScale = new Vector3(f.Mirror ? -f.Width : f.Width, f.Height * (1f + breath * 0.006f), 1f);
+
+                // Celui qui joue est un peu plus lumineux ; un éliminé s'éteint.
+                float glow = (active > 0 && !isActive ? 0.88f : 1f) + f.Lift * 0.14f + hop * 0.3f;
+                glow = Mathf.Lerp(glow, 0.32f, f.Out);
+                if (Mathf.Abs(glow - f.Glow) > 0.002f)
+                {
+                    f.Glow = glow;
+                    f.Mat.SetColor(NeonMaterials.EmissionColorProperty, Color.white * glow);
+                }
             }
         }
     }
