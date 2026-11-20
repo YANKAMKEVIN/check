@@ -500,6 +500,7 @@ namespace Check.Game.UI
             bool inGame = game.HasGame && !homeOverlay.activeSelf && !setupOverlay.activeSelf;
             hudGroup.SetActive(inGame);
             badgeLayer.gameObject.SetActive(inGame);
+            sfx.SetTension(inGame ? RumbleSynth.Tension(ActiveHandCounts()) : 0f);
             if (!inGame) return;
 
             RefreshStatus();
@@ -509,6 +510,17 @@ namespace Check.Game.UI
             RefreshTips();
             roundInfo.text = game.Match != null ? $"Tour {game.Match.RoundNumber} · {game.Match.Alive.Count} en jeu" : "";
             UIKit.SetButtonText(speedButton, game.Settings.Speed == AiSpeed.Fast ? "Vitesse ×2" : "Vitesse ×1");
+        }
+
+        /// <summary>Cartes en main des joueurs encore en course dans le tour affiché.</summary>
+        IEnumerable<int> ActiveHandCounts()
+        {
+            for (int p = 0; p < table.PlayerCount; p++)
+            {
+                bool outOfRound = (p < table.Eliminated.Length && table.Eliminated[p]) || (p < table.Qualified.Length && table.Qualified[p]);
+                int n = table.HandCount(p);
+                if (!outOfRound && n > 0) yield return n;
+            }
         }
 
         void RefreshStatus()

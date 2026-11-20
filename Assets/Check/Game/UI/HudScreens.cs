@@ -19,7 +19,7 @@ namespace Check.Game.UI
         GameSettings pending;
 
         Button resumeSavedButton, soundButton, hapticsButton, pauseSpeedButton, pauseSoundButton;
-        Button[] playerButtons, levelButtons, speedButtons;
+        Button[] playerButtons, levelButtons, speedButtons, ambienceButtons;
         Text setupSummary;
         Button[] ruleButtons;
         Text roundTitle, roundBody;
@@ -189,6 +189,7 @@ namespace Check.Game.UI
             UIKit.SetButtonText(hapticsButton, pending.Haptics ? "Vibrations : oui" : "Vibrations : non");
             UIKit.SetButtonText(pauseSoundButton, sfx.Muted ? "Son : non" : "Son : oui");
             UIKit.SetButtonText(pauseSpeedButton, game.Settings.Speed == AiSpeed.Fast ? "Adversaires : rapides" : "Adversaires : normaux");
+            for (int i = 0; i < ambienceButtons.Length; i++) Mark(ambienceButtons[i], sfx.AmbienceLevel == i, UIKit.Cyan);
         }
 
         public void ShowHome()
@@ -450,8 +451,8 @@ namespace Check.Game.UI
 
         void BuildPause()
         {
-            pauseOverlay = Overlay("Pause", out var card, 760, 940, UIKit.Cyan);
-            UIKit.VStack(card, 16, 44);
+            pauseOverlay = Overlay("Pause", out var card, 760, 1010, UIKit.Cyan);
+            UIKit.VStack(card, 14, 40);
             Title(card, "Pause", 70, UIKit.Gold, 96);
             UIKit.Size(UIKit.Button("Resume", card, "Reprendre", () => { sfx.Play(Sfx.Click); Show(pauseOverlay, false); }, UIKit.Gold, 46), 112);
             UIKit.Size(UIKit.Button("New", card, "Nouvelle partie", () => { sfx.Play(Sfx.Click); ShowSetup(); }, UIKit.Cyan, 38), 98);
@@ -466,6 +467,16 @@ namespace Check.Game.UI
             UIKit.Size(pauseSpeedButton, 92);
             pauseSoundButton = UIKit.Button("Sound", card, "", () => { sfx.Muted = !sfx.Muted; sfx.Play(Sfx.Click); RefreshToggles(); }, UIKit.Cyan, 34);
             UIKit.Size(pauseSoundButton, 92);
+            // Volume de l'ambiance du wagon (roulement de la rame).
+            var amb = Row(card, 76, 10);
+            UIKit.Size(UIKit.Label("AmbienceLabel", amb, "Rame", 28, UIKit.TextDim, TextAnchor.MiddleCenter, FontStyle.Bold), -1, 110, 0f);
+            string[] ambNames = { "coupée", "douce", "forte" };
+            ambienceButtons = new Button[ambNames.Length];
+            for (int i = 0; i < ambNames.Length; i++)
+            {
+                int level = i;
+                ambienceButtons[i] = UIKit.Button("Ambience" + i, amb, ambNames[i], () => { sfx.AmbienceLevel = level; sfx.Play(Sfx.Click); RefreshToggles(); }, UIKit.Cyan, 28);
+            }
             UIKit.Size(UIKit.Button("Quit", card, "Quitter la partie", () =>
             {
                 sfx.Play(Sfx.Click);

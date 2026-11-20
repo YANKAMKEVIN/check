@@ -104,5 +104,33 @@ namespace Check.Tests
             Assert.AreEqual(match.Winner, order[0]);
             CollectionAssert.AreEquivalent(Enumerable.Range(0, 5), order);
         }
+
+        // ---------- Ambiance du wagon ----------
+
+        [Test]
+        public void Rumble_LoopsWithoutClickAndStaysInRange()
+        {
+            const int rate = 22050;
+            var data = RumbleSynth.Render(rate);
+            Assert.AreEqual((int)Math.Round(RumbleSynth.LoopSeconds * rate), data.Length);
+            float peak = data.Max(Math.Abs);
+            Assert.That(peak, Is.InRange(0.5f, 0.81f));
+            // Raccord : l'écart entre la fin et le début ne dépasse pas l'écart typique entre deux échantillons voisins.
+            float typical = 0f;
+            for (int i = 1; i < data.Length; i++) typical = Math.Max(typical, Math.Abs(data[i] - data[i - 1]));
+            Assert.LessOrEqual(Math.Abs(data[0] - data[data.Length - 1]), typical);
+            var hits = RumbleSynth.WheelHits();
+            Assert.AreEqual(RumbleSynth.JointsPerLoop * 4, hits.Count);
+            Assert.IsTrue(hits.All(h => h > 0f && h < RumbleSynth.LoopSeconds));
+        }
+
+        [Test]
+        public void Rumble_TensionRisesWithTheLastCards()
+        {
+            Assert.AreEqual(0f, RumbleSynth.Tension(new[] { 5, 4, 6 }));
+            Assert.AreEqual(0.4f, RumbleSynth.Tension(new[] { 5, 2, 6 }));
+            Assert.AreEqual(1f, RumbleSynth.Tension(new[] { 2, 1, 6 }));
+            Assert.AreEqual(0f, RumbleSynth.Tension(new int[0]));
+        }
     }
 }
