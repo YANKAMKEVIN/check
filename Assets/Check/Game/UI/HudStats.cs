@@ -16,7 +16,7 @@ namespace Check.Game.UI
         void BuildStats()
         {
             statsOverlay = Overlay("Stats", out var card, 1300, 860, UIKit.Gold, 0.6f);
-            var title = UIKit.Label("Title", card, "Mon carnet", 60, UIKit.Gold, TextAnchor.MiddleCenter, FontStyle.Bold);
+            var title = UIKit.Display(UIKit.Label("Title", card, "Mon carnet", 60, UIKit.Gold, TextAnchor.MiddleCenter, FontStyle.Bold));
             UIKit.Anchor(title.rectTransform, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0, -26), new Vector2(900, 80));
             statsHeadline = UIKit.Label("Headline", card, "", 32, UIKit.Cyan, TextAnchor.MiddleCenter, FontStyle.Bold);
             UIKit.Anchor(statsHeadline.rectTransform, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0, -108), new Vector2(1100, 50));

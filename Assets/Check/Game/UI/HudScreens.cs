@@ -118,7 +118,7 @@ namespace Check.Game.UI
 
         static Text Title(RectTransform parent, string text, int size, Color color, float height)
         {
-            var t = UIKit.Label("Title", parent, text, size, color, TextAnchor.MiddleCenter, FontStyle.Bold);
+            var t = UIKit.Display(UIKit.Label("Title", parent, text, size, color, TextAnchor.MiddleCenter, FontStyle.Bold));
             UIKit.Size(t, height);
             return t;
         }
@@ -384,7 +384,7 @@ namespace Check.Game.UI
         void BuildRules()
         {
             rulesOverlay = Overlay("Rules", out var card, 1380, 950, UIKit.Gold, 0.7f);
-            var title = UIKit.Label("Title", card, "Règles du Check", 56, UIKit.Gold, TextAnchor.MiddleCenter, FontStyle.Bold);
+            var title = UIKit.Display(UIKit.Label("Title", card, "Règles du Check", 56, UIKit.Gold, TextAnchor.MiddleCenter, FontStyle.Bold));
             UIKit.Anchor(title.rectTransform, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0, -24), new Vector2(900, 76));
 
             // Fiches à gauche : un onglet par fiche, puis la fiche (cartes réelles + texte), défilante si besoin.

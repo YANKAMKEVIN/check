@@ -556,6 +556,10 @@ namespace Check.Game.UI
 
             status.text = text;
             status.color = color;
+            // Bandeau en police Art déco, sauf quand il montre un symbole de couleur (absent de cette police).
+            bool plain = UIKit.HasSuitSymbol(text);
+            status.font = plain ? UIKit.Font : UIKit.DisplayFont;
+            status.fontStyle = plain ? FontStyle.Bold : FontStyle.Normal;
             if (Time.unscaledTime < flashUntil)
             {
                 hint.text = flashText;

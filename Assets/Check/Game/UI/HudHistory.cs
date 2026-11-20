@@ -21,7 +21,7 @@ namespace Check.Game.UI
         void BuildHistory()
         {
             historyOverlay = Overlay("History", out var card, 1100, 920, UIKit.Indigo * 2.5f, 0.55f);
-            var title = UIKit.Label("Title", card, "Historique du tour", 54, UIKit.Gold, TextAnchor.MiddleCenter, FontStyle.Bold);
+            var title = UIKit.Display(UIKit.Label("Title", card, "Historique du tour", 54, UIKit.Gold, TextAnchor.MiddleCenter, FontStyle.Bold));
             UIKit.Anchor(title.rectTransform, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0, -24), new Vector2(900, 72));
 
             var scrollRt = UIKit.Rect("Scroll", card);

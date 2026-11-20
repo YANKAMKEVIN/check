@@ -39,6 +39,38 @@ namespace Check.Game.UI
             }
         }
 
+        static Font displayFont;
+        static bool displayLoaded;
+
+        /// <summary>
+        /// Police d'affichage Art déco (Limelight, OFL, Resources/Limelight-Regular.ttf) pour les titres, le bandeau
+        /// et les écrans de fin ; les textes longs gardent <see cref="Font"/>. Repli sur celle-ci si absente.
+        /// Elle n'a pas les symboles ♠ ♥ ♦ ♣ : ne pas l'utiliser pour un texte qui en contient.
+        /// </summary>
+        public static Font DisplayFont
+        {
+            get
+            {
+                if (!displayLoaded)
+                {
+                    displayLoaded = true;
+                    displayFont = Resources.Load<Font>("Limelight-Regular");
+                }
+                return displayFont != null ? displayFont : Font;
+            }
+        }
+
+        /// <summary>Passe un texte en police d'affichage (titres).</summary>
+        public static Text Display(Text t)
+        {
+            t.font = DisplayFont;
+            t.fontStyle = FontStyle.Normal; // la police est déjà grasse : pas de faux gras
+            return t;
+        }
+
+        public static bool HasSuitSymbol(string text) =>
+            text != null && text.IndexOfAny(new[] { '♠', '♥', '♦', '♣' }) >= 0;
+
         /// <summary>
         /// Sur mobile, la police intégrée n'a pas les symboles ♠ ♥ ♦ ♣ (et les polices système varient d'un
         /// téléphone à l'autre) : on embarque Noto Sans Symbols 2, qui ne contient que des symboles, et
