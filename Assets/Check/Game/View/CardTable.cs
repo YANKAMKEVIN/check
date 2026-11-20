@@ -22,6 +22,8 @@ namespace Check.Game.View
         /// <summary>Dernier événement d'un lot : taille réelle de la pioche après le lot (-1 sinon).</summary>
         public int PileAfter = -1;
         public int RoundNumber;
+        /// <summary>Eliminated : cartes restées dans la main du perdant (retournées sur la table).</summary>
+        public Card[] LoserHand;
         public GameEventKind Kind => E.Kind;
     }
 
@@ -124,6 +126,7 @@ namespace Check.Game.View
             pile.Clear();
             dragged = null;
             playerCount = players;
+            revealedPlayer = -1;
             hands = new List<Item>[players];
             for (int i = 0; i < players; i++) hands[i] = new List<Item>();
             Qualified = new bool[players];
@@ -163,6 +166,8 @@ namespace Check.Game.View
                 var ve = new ViewEvent { E = e, SeatPlayers = seatPlayers, RoundNumber = match.RoundNumber };
                 if (e.Kind == GameEventKind.Eliminated || e.Kind == GameEventKind.MatchWon) ve.Player = e.PlayerId;
                 else if (e.Seat >= 0 && e.Seat < seatPlayers.Length) ve.Player = seatPlayers[e.Seat];
+                if (e.Kind == GameEventKind.Eliminated && e.Seat >= 0 && e.Seat < round.SeatCount)
+                    ve.LoserHand = round.Hand(e.Seat).ToArray();
                 if (e.Kind == GameEventKind.RoundStarted)
                 {
                     int hs = round.SeatOf(HumanId);
@@ -277,13 +282,48 @@ namespace Check.Game.View
                     table.ReactPlayer(ev.Player, SeatReaction.Eliminated);
                     ActivePlayer = -1;
                     sfx.Play(Sfx.Eliminated);
-                    return Wait(1.1f);
+                    // Les cartes restées dans la main du perdant se retournent sur la table pendant qu'il s'éteint.
+                    return RevealLoserHand(ev.Player, ev.LoserHand) ? Wait(1.9f) : Wait(1.1f);
                 case GameEventKind.Reshuffled: return Reshuffle(e.Count);
                 case GameEventKind.MatchWon:
                     ActivePlayer = -1;
                     return Wait(0.5f);
             }
             return null;
+        }
+
+        int revealedPlayer = -1;
+
+        bool RevealLoserHand(int player, Card[] cards)
+        {
+            if (player <= HumanId || player >= hands.Length || cards == null || cards.Length == 0) return false;
+            var hand = hands[player];
+            if (hand.Count == 0) return false;
+            revealedPlayer = player;
+            for (int k = 0; k < hand.Count; k++)
+            {
+                var it = hand[k];
+                if (k < cards.Length && (!it.Card.HasValue || it.Card.Value != cards[k])) it.View.SetCard(cards[k]);
+                var pose = RevealPose(player, k, hand.Count);
+                float dur = D(0.45f);
+                it.Follow = false;
+                it.View.MoveTo(pose.pos, pose.rot, dur, 0.22f, true);
+                it.FollowAt = Time.time + dur + D(0.12f) * k;
+            }
+            sfx.Play(Sfx.Slide, 0.8f);
+            return true;
+        }
+
+        /// <summary>Main du perdant étalée face visible sur la table, devant sa place.</summary>
+        (Vector3 pos, Quaternion rot) RevealPose(int player, int index, int count)
+        {
+            var seat = TableLayout.Seat(player, playerCount);
+            var right = Vector3.Cross(Vector3.up, seat.Facing);
+            float step = count <= 1 ? 0f : Mathf.Min(0.42f, 2.2f / (count - 1));
+            float off = (index - (count - 1) * 0.5f) * step;
+            var pos = seat.HandCenter + seat.Facing * 0.7f + right * off
+                      + Vector3.up * (CardView.Thickness * 0.5f + index * (CardView.Thickness + 0.0008f));
+            return (pos, Quaternion.Euler(0f, off * 6f, 0f));
         }
 
         IEnumerator Wait(float seconds)
@@ -295,6 +335,7 @@ namespace Check.Game.View
 
         IEnumerator DealRound(ViewEvent ev)
         {
+            revealedPlayer = -1;
             ActivePlayer = -1;
             PendingDraw = 0;
             RequestedSuit = null;
@@ -599,6 +640,7 @@ namespace Check.Game.View
                     var hand = it.Owner >= 0 && it.Owner < hands.Length ? hands[it.Owner] : null;
                     int idx = hand != null ? hand.IndexOf(it) : 0;
                     int count = hand?.Count ?? 1;
+                    if (it.Owner == revealedPlayer) return RevealPose(it.Owner, idx, count);
                     return it.Owner == HumanId ? HumanPose(idx, count, it) : OpponentPose(it.Owner, idx, count);
                 case Zone.Discard: return DiscardPose(discard.IndexOf(it), it);
                 case Zone.Pile: return PilePose(pile.IndexOf(it));

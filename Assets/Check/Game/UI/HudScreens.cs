@@ -23,6 +23,7 @@ namespace Check.Game.UI
         Text setupSummary;
         Button[] ruleButtons;
         Text roundTitle, roundBody;
+        Medallion roundLoserFace;
         GameObject roundNextRow, roundOutRow;
         Text matchTitle, matchBody;
         Coroutine autoNext;
@@ -617,12 +618,17 @@ namespace Check.Game.UI
 
         void BuildRoundEnd()
         {
-            roundOverlay = Overlay("RoundEnd", out var card, 1100, 720, UIKit.Magenta, 0.45f);
-            UIKit.VStack(card, 18, 46);
-            roundTitle = Title(card, "", 66, UIKit.Gold, 90);
+            roundOverlay = Overlay("RoundEnd", out var card, 1100, 820, UIKit.Magenta, 0.45f);
+            UIKit.VStack(card, 16, 42);
+            roundTitle = Title(card, "", 66, UIKit.Gold, 86);
+            // Portrait du perdant du tour.
+            var faceRow = UIKit.Rect("Loser", card);
+            UIKit.Size(faceRow.gameObject.AddComponent<LayoutElement>(), 140);
+            roundLoserFace = BuildMedallion(faceRow, 132, UIKit.Danger);
+            UIKit.Anchor(roundLoserFace.Root, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(132, 132));
             roundBody = UIKit.Label("Body", card, "", 32, UIKit.Text);
             roundBody.supportRichText = true;
-            UIKit.Size(roundBody, 300);
+            UIKit.Size(roundBody, 260);
 
             var next = Row(card, 120);
             roundNextRow = next.gameObject;
@@ -659,10 +665,12 @@ namespace Check.Game.UI
             string extra = humanJustEliminated ? "\nTu peux regarder la fin de la partie en accéléré." :
                 game.HumanAlive ? $"\nTour {m.RoundNumber + 1} : {m.Rules.CardsToDeal(alive.Count)} cartes chacun." : "";
             roundBody.text = lostLine + "\n\n" + aliveLine + extra;
+            SetMedallion(roundLoserFace, loser);
+            roundLoserFace.Face.color = new Color(0.75f, 0.75f, 0.8f); // visage un peu éteint, comme son personnage
             roundNextRow.SetActive(!humanJustEliminated);
             roundOutRow.SetActive(humanJustEliminated);
             if (humanJustEliminated) sfx.Play(Sfx.Defeat, 0.7f);
-            StartCoroutine(ShowDelayed(roundOverlay, 0.35f));
+            StartCoroutine(ShowDelayed(roundOverlay, 0.5f));
             // L'humain regarde la fin : on enchaîne tout seul.
             if (!humanJustEliminated && !game.HumanAlive) autoNext = StartCoroutine(AutoNextRound());
         }
