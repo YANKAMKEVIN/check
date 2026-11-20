@@ -132,5 +132,45 @@ namespace Check.Tests
             Assert.AreEqual(1f, RumbleSynth.Tension(new[] { 2, 1, 6 }));
             Assert.AreEqual(0f, RumbleSynth.Tension(new int[0]));
         }
+
+        // ---------- Carnet du joueur ----------
+
+        [Test]
+        public void Stats_CountOnlyTheHumanAndTrackStreaks()
+        {
+            var st = new PlayerStats();
+            Assert.IsFalse(st.Record(new GameEvent { Kind = GameEventKind.CheckForgotten, Count = 2 }, false, 1, 4));
+            Assert.IsTrue(st.Record(new GameEvent { Kind = GameEventKind.CheckForgotten, Count = 2 }, true, 1, 4));
+            st.Record(new GameEvent { Kind = GameEventKind.CheckDeclared }, true, 1, 4);
+            st.Record(new GameEvent { Kind = GameEventKind.PenaltyDrawn, Count = 6 }, true, 1, 4);
+            Assert.IsFalse(st.Record(new GameEvent { Kind = GameEventKind.PenaltyDrawn, Count = 2 }, true, 1, 4));
+            st.Record(new GameEvent { Kind = GameEventKind.MatchWon }, true, 1, 4);
+            st.Record(new GameEvent { Kind = GameEventKind.MatchWon }, true, 2, 6);
+            st.Record(new GameEvent { Kind = GameEventKind.Eliminated }, true, 2, 6);
+            st.Record(new GameEvent { Kind = GameEventKind.MatchWon }, true, 3, 10);
+            Assert.AreEqual(1, st.ChecksForgotten);
+            Assert.AreEqual(1, st.ChecksSaid);
+            Assert.AreEqual(6, st.BiggestPenalty);
+            Assert.AreEqual(4, st.Played);
+            Assert.AreEqual(3, st.Won);
+            Assert.AreEqual(2, st.PlayedByLevel[2]);
+            Assert.AreEqual(1, st.WonByLevel[2]);
+            Assert.AreEqual(2, st.PlayedByPlayers[6]);
+            Assert.AreEqual(1, st.WonByPlayers[10]);
+            Assert.AreEqual(2, st.BestStreak);
+            Assert.AreEqual(1, st.CurrentStreak);
+        }
+
+        [Test]
+        public void Stats_DescribeAndRepairOldData()
+        {
+            Assert.AreEqual("aucune partie", PlayerStats.Describe(0, 0));
+            Assert.AreEqual("1 partie · 0 victoire (0 %)", PlayerStats.Describe(1, 0));
+            Assert.AreEqual("3 parties · 2 victoires (67 %)", PlayerStats.Describe(3, 2));
+            var old = new PlayerStats { PlayedByLevel = new[] { 2 }, WonByPlayers = null }.Normalized();
+            Assert.AreEqual(PlayerStats.Levels, old.PlayedByLevel.Length);
+            Assert.AreEqual(2, old.PlayedByLevel[0]);
+            Assert.AreEqual(RuleSet.MaxPlayers + 1, old.WonByPlayers.Length);
+        }
     }
 }

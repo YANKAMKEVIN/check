@@ -490,14 +490,14 @@ namespace Check.Game.UI
         void Update()
         {
             UpdateLayout();
-            bool menuLike = homeOverlay.activeSelf || setupOverlay.activeSelf || pauseOverlay.activeSelf ||
+            bool menuLike = homeOverlay.activeSelf || setupOverlay.activeSelf || pauseOverlay.activeSelf || statsOverlay.activeSelf ||
                             (rulesOverlay.activeSelf && !game.HasGame) || (rulesOverlay.activeSelf && rulesFromPause);
             game.Paused = menuLike;
             AnimatePodium();
             Time.timeScale = menuLike ? 0f : game.Turbo ? 3f : 1f;
             human.Tick();
 
-            bool inGame = game.HasGame && !homeOverlay.activeSelf && !setupOverlay.activeSelf;
+            bool inGame = game.HasGame && !homeOverlay.activeSelf && !setupOverlay.activeSelf && !statsOverlay.activeSelf;
             hudGroup.SetActive(inGame);
             badgeLayer.gameObject.SetActive(inGame);
             sfx.SetTension(inGame ? RumbleSynth.Tension(ActiveHandCounts()) : 0f);

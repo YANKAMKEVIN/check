@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -200,10 +201,32 @@ namespace Check.Game.Match
             return true;
         }
 
+        PlayerStats stats;
+        bool? recordStats;
+
+        /// <summary>Carnet du joueur (parties, victoires, compteurs), tenu à jour pendant les parties.</summary>
+        public PlayerStats Stats => stats ??= StatsStore.Load();
+
+        void RecordStats(IReadOnlyList<GameEvent> events, Round round)
+        {
+            // La recette automatique ne remplit pas le carnet.
+            recordStats ??= !Check.Game.App.AutoTest.Requested(out _);
+            if (!recordStats.Value || Turbo) return;
+            bool changed = false;
+            foreach (var e in events)
+            {
+                int player = e.Kind == GameEventKind.Eliminated || e.Kind == GameEventKind.MatchWon ? e.PlayerId
+                    : e.Seat >= 0 && e.Seat < round.SeatCount ? round.PlayerId(e.Seat) : -1;
+                changed |= Stats.Record(e, player == HumanId, (int)Settings.Level, Match.PlayerCount);
+            }
+            if (changed) StatsStore.Save(Stats);
+        }
+
         void Apply(TurnAction action)
         {
             var round = Match.Round;
             var events = Match.Apply(action);
+            RecordStats(events, round);
             reconciled = false;
             if (Match.IsOver) SavedGame.Clear();
             else if (save != null)

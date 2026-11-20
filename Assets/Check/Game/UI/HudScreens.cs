@@ -46,7 +46,7 @@ namespace Check.Game.UI
 
         public bool IsBlockingOverlayOpen =>
             homeOverlay.activeSelf || setupOverlay.activeSelf || rulesOverlay.activeSelf || pauseOverlay.activeSelf ||
-            suitOverlay.activeSelf || roundOverlay.activeSelf || matchOverlay.activeSelf;
+            suitOverlay.activeSelf || roundOverlay.activeSelf || matchOverlay.activeSelf || statsOverlay.activeSelf;
 
         void BuildScreens()
         {
@@ -59,6 +59,7 @@ namespace Check.Game.UI
             BuildSuitPicker();
             BuildRoundEnd();
             BuildMatchEnd();
+            BuildStats();
         }
 
         GameObject Overlay(string name, out RectTransform card, float width, float height, Color accent, float dim = 0.62f)
@@ -160,7 +161,9 @@ namespace Check.Game.UI
                 else { resumeSavedButton.gameObject.SetActive(false); Flash("Aucune partie à reprendre"); }
             }, UIKit.Cyan, 40);
             UIKit.Size(resumeSavedButton, 104);
-            UIKit.Size(UIKit.Button("Rules", card, "Règles", () => { sfx.Play(Sfx.Click); ShowRules(false); }, UIKit.Cyan, 40), 100);
+            var info = Row(card, 100);
+            UIKit.Button("Rules", info, "Règles", () => { sfx.Play(Sfx.Click); ShowRules(false); }, UIKit.Cyan, 40);
+            UIKit.Button("Stats", info, "Mon carnet", () => { sfx.Play(Sfx.Click); ShowStats(); }, UIKit.Cyan, 40);
 
             var row = Row(card, 96);
             soundButton = UIKit.Button("Sound", row, "", () =>
@@ -202,7 +205,7 @@ namespace Check.Game.UI
 
         void HideAll()
         {
-            foreach (var o in new[] { homeOverlay, setupOverlay, rulesOverlay, pauseOverlay, suitOverlay, roundOverlay, matchOverlay })
+            foreach (var o in new[] { homeOverlay, setupOverlay, rulesOverlay, pauseOverlay, suitOverlay, roundOverlay, matchOverlay, statsOverlay })
                 o.SetActive(false);
             if (suitCallback != null) { var cb = suitCallback; suitCallback = null; cb(null); }
             if (autoNext != null) { StopCoroutine(autoNext); autoNext = null; }
@@ -754,6 +757,7 @@ namespace Check.Game.UI
                 if (game.HasGame && !game.Match.IsOver) ShowPause(); else ShowHome();
                 return;
             }
+            if (statsOverlay.activeSelf) { ShowHome(); return; }
             if (pauseOverlay.activeSelf) { Show(pauseOverlay, false); return; }
             if (homeOverlay.activeSelf)
             {
