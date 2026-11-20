@@ -16,6 +16,7 @@ namespace Check.Game.Input
     {
         const float DoubleTapSeconds = 0.32f;
         const float MaxTapSeconds = 0.6f;
+        const float LongPressSeconds = 0.5f;
 
         public event Action<Vector2> Tapped;
         public event Action<Vector2> DoubleTapped;
@@ -27,11 +28,15 @@ namespace Check.Game.Input
         public event Action<Vector2> DragMoved;
         /// <summary>Fin d'un glisser à un doigt (position de relâche).</summary>
         public event Action<Vector2> DragEnded;
+        /// <summary>Doigt (ou bouton) gardé appuyé sans bouger (position de départ) ; le toucher n'est alors pas transmis.</summary>
+        public event Action<Vector2> LongPressed;
+        /// <summary>Relâche après un appui long.</summary>
+        public event Action LongPressEnded;
 
         float dragThreshold;
         Vector2 pressStart, lastPos;
         float pressTime;
-        bool pressing, dragging, gestureBlocked, multiTouchSeen;
+        bool pressing, dragging, gestureBlocked, multiTouchSeen, longPressed;
         float lastPinchDistance;
         float lastTapTime = -10f;
         Vector2 lastTapPos;
@@ -51,6 +56,19 @@ namespace Check.Game.Input
         {
             if (Touch.activeTouches.Count > 0) HandleTouches();
             else if (Mouse.current != null) HandleMouse(Mouse.current);
+            if (pressing && !dragging && !gestureBlocked && !multiTouchSeen && !longPressed
+                && Time.unscaledTime - pressTime > LongPressSeconds)
+            {
+                longPressed = true;
+                LongPressed?.Invoke(pressStart);
+            }
+        }
+
+        void EndLongPress()
+        {
+            if (!longPressed) return;
+            longPressed = false;
+            LongPressEnded?.Invoke();
         }
 
         void HandleTouches()
@@ -85,6 +103,7 @@ namespace Check.Game.Input
                 case UnityEngine.InputSystem.TouchPhase.Canceled:
                     if (pressing && dragging && !gestureBlocked && !multiTouchSeen) DragEnded?.Invoke(t.screenPosition);
                     pressing = false;
+                    EndLongPress();
                     break;
             }
         }
@@ -122,11 +141,12 @@ namespace Check.Game.Input
             pressStart = lastPos = pos;
             pressTime = Time.unscaledTime;
             gestureBlocked = IsOverUI(pos);
+            EndLongPress();
         }
 
         void Move(Vector2 pos)
         {
-            if (gestureBlocked) return;
+            if (gestureBlocked || longPressed) return;
             if (!dragging && (pos - pressStart).magnitude > dragThreshold)
             {
                 dragging = true;
@@ -145,6 +165,7 @@ namespace Check.Game.Input
         void End(Vector2 pos)
         {
             pressing = false;
+            if (longPressed) { EndLongPress(); return; }
             if (!gestureBlocked && dragging && !multiTouchSeen) DragEnded?.Invoke(pos);
             if (gestureBlocked || dragging || multiTouchSeen) return;
             if (Time.unscaledTime - pressTime > MaxTapSeconds) return;

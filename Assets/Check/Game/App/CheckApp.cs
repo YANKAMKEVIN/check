@@ -106,6 +106,8 @@ namespace Check.Game.App
             pointer.DragBegan += p => Guard(() => OnDragBegan(p));
             pointer.DragMoved += p => Guard(() => { if (draggedCard.HasValue) cards.DragTo(p); });
             pointer.DragEnded += p => Guard(() => OnDragEnded(p));
+            pointer.LongPressed += p => Guard(() => OnLongPress(p));
+            pointer.LongPressEnded += () => Guard(hud.HideCardHelp);
         }
 
         void Start()
@@ -161,6 +163,14 @@ namespace Check.Game.App
         {
             if (hud.IsBlockingOverlayOpen || !game.HasGame) return;
             if (cards.TryPickHumanCard(screen, out var card)) human.QuickPlay(card);
+        }
+
+        /// <summary>Appui long sur une carte de la main ou sur le tas : rappel de son effet.</summary>
+        void OnLongPress(Vector2 screen)
+        {
+            if (hud.IsBlockingOverlayOpen || !game.HasGame) return;
+            if (cards.TryPickHumanCard(screen, out var card)) { hud.ShowCardHelp(card); return; }
+            if (NearDiscard(screen) && cards.TopCard.HasValue) hud.ShowCardHelp(cards.TopCard.Value);
         }
 
         void OnDragBegan(Vector2 start)

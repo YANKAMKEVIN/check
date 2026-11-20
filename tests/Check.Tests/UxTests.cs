@@ -172,5 +172,22 @@ namespace Check.Tests
             Assert.AreEqual(2, old.PlayedByLevel[0]);
             Assert.AreEqual(RuleSet.MaxPlayers + 1, old.WonByPlayers.Length);
         }
+
+        // ---------- Appui long : effet d'une carte ----------
+
+        [Test]
+        public void CardHelp_DescribesEachKindOfCard()
+        {
+            StringAssert.StartsWith("As :", CardHelp.Effect(C("AH")));
+            StringAssert.Contains("pioche 2", CardHelp.Effect(C("7S")));
+            StringAssert.Contains("joker", CardHelp.Effect(C("7S")));
+            StringAssert.DoesNotContain("joker", CardHelp.Effect(C("7S"), new RuleSet { JokerCountersSeven = false }));
+            StringAssert.Contains("rouge", CardHelp.Effect(Card.RedJoker));
+            StringAssert.Contains("pioche 4", CardHelp.Effect(Card.BlackJoker));
+            StringAssert.Contains("n'importe quelle", CardHelp.Effect(C("VD")));
+            StringAssert.Contains("carreau", CardHelp.Effect(C("VD"), new RuleSet { JackIsWild = false }));
+            StringAssert.Contains("sous le tas", CardHelp.Effect(C("2C")));
+            Assert.AreEqual("9♥ : carte simple, se pose sur un cœur ou un 9.", CardHelp.Effect(C("9H")));
+        }
     }
 }

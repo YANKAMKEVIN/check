@@ -77,6 +77,7 @@ namespace Check.Game.UI
             BuildHud();
             BuildScreens();
             BuildTips();
+            BuildCardHelp();
 
             human.UiBlocked = () => IsBlockingOverlayOpen;
             human.AskSuit = AskSuit;
@@ -495,6 +496,7 @@ namespace Check.Game.UI
             RefreshPileIndicators();
             RefreshActions();
             RefreshTips();
+            RefreshCardHelp();
             roundInfo.text = game.Match != null ? $"Tour {game.Match.RoundNumber} · {game.Match.Alive.Count} en jeu" : "";
             UIKit.SetButtonText(speedButton, game.Settings.Speed == AiSpeed.Fast ? "Vitesse ×2" : "Vitesse ×1");
         }
