@@ -222,9 +222,43 @@ namespace Check.Game.UI
 
         void BuildSetup()
         {
-            setupOverlay = Overlay("Setup", out var card, 1240, 940, UIKit.Cyan, 0.5f);
-            UIKit.VStack(card, 14, 44);
-            Title(card, "Nouvelle partie", 64, UIKit.Gold, 84);
+            setupOverlay = Overlay("Setup", out var card, 1240, 1040, UIKit.Cyan, 0.5f);
+            UIKit.VStack(card, 12, 40);
+            Title(card, "Nouvelle partie", 60, UIKit.Gold, 76);
+
+            // Le joueur à table : prénom et portrait peint (repris dans son badge, le journal et le classement).
+            UIKit.Size(UIKit.Label("YouLabel", card, "Ton prénom et ton portrait", 32, UIKit.TextDim), 42);
+            var you = Row(card, 96, 8);
+            you.GetComponent<HorizontalLayoutGroup>().childForceExpandWidth = false;
+            nameField = BuildNameField(you);
+            UIKit.Size(nameField, 84, 320);
+            portraitChoices = new Medallion[Visuals.PaintedScene.PortraitCount + 1];
+            for (int i = 0; i < portraitChoices.Length; i++)
+            {
+                int index = i;
+                var slot = UIKit.Rect("Portrait" + i, you);
+                UIKit.Size(slot.gameObject.AddComponent<LayoutElement>(), 80, 74);
+                var m = BuildMedallion(slot, 70, UIKit.Gold);
+                UIKit.Anchor(m.Root, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(70, 70));
+                m.Disc.raycastTarget = true;
+                var b = m.Disc.gameObject.AddComponent<Button>();
+                b.targetGraphic = m.Disc;
+                b.onClick.AddListener(() => { sfx.Play(Sfx.Click); pending.PlayerPortrait = index; RefreshSetup(); });
+                if (index == 0)
+                {
+                    m.Face.enabled = false;
+                    m.Initial.text = "★";
+                    m.Disc.color = new Color(0.30f, 0.14f, 0.05f);
+                }
+                else if (Visuals.PaintedScene.TryGetPortraitImage(index, out var tex, out var uv))
+                {
+                    m.Face.texture = tex;
+                    m.Face.uvRect = uv;
+                    m.Initial.enabled = false;
+                }
+                else m.Initial.text = index.ToString();
+                portraitChoices[i] = m;
+            }
 
             UIKit.Size(UIKit.Label("PlayersLabel", card, "Nombre de joueurs (toi compris)", 32, UIKit.TextDim), 46);
             var players = Row(card, 100, 10);
@@ -275,9 +309,38 @@ namespace Check.Game.UI
             UIKit.Size(SetupStartButton, -1, -1, 1.6f);
         }
 
+        InputField nameField;
+        Medallion[] portraitChoices;
+
+        InputField BuildNameField(Transform parent)
+        {
+            var bg = UIKit.Panel("Name", parent, new Color(0.03f, 0.03f, 0.08f, 0.9f), true, UIKit.Gold);
+            var field = bg.gameObject.AddComponent<InputField>();
+            field.targetGraphic = bg;
+            var text = UIKit.Label("Text", bg.transform, "", 34, UIKit.Text, TextAnchor.MiddleLeft, FontStyle.Bold);
+            UIKit.Stretch(text.rectTransform, 22, 6, 18, 6);
+            text.supportRichText = false;
+            text.horizontalOverflow = HorizontalWrapMode.Overflow;
+            var placeholder = UIKit.Label("Placeholder", bg.transform, PlayerIdentity.DefaultName, 34, UIKit.TextDim, TextAnchor.MiddleLeft, FontStyle.Italic);
+            UIKit.Stretch(placeholder.rectTransform, 22, 6, 18, 6);
+            field.textComponent = text;
+            field.placeholder = placeholder;
+            field.characterLimit = PlayerIdentity.MaxLength;
+            field.lineType = InputField.LineType.SingleLine;
+            field.onEndEdit.AddListener(value =>
+            {
+                string clean = PlayerIdentity.Sanitize(value);
+                pending.PlayerName = clean == PlayerIdentity.DefaultName ? "" : clean;
+                field.SetTextWithoutNotify(pending.PlayerName);
+            });
+            return field;
+        }
+
         void StartFromSetup()
         {
             sfx.Play(Sfx.Click);
+            string typed = PlayerIdentity.Sanitize(nameField.text);
+            pending.PlayerName = typed == PlayerIdentity.DefaultName ? "" : typed;
             pending.Save();
             HideAll();
             Time.timeScale = 1f;
@@ -297,6 +360,13 @@ namespace Check.Game.UI
             for (int i = 0; i < playerButtons.Length; i++) Mark(playerButtons[i], pending.PlayerCount == i + RuleSet.MinPlayers, UIKit.Cyan);
             for (int i = 0; i < levelButtons.Length; i++) Mark(levelButtons[i], (int)pending.Level == i, UIKit.Magenta);
             for (int i = 0; i < speedButtons.Length; i++) Mark(speedButtons[i], (int)pending.Speed == i, UIKit.Gold);
+            nameField.SetTextWithoutNotify(pending.PlayerName ?? "");
+            for (int i = 0; i < portraitChoices.Length; i++)
+            {
+                bool on = pending.PlayerPortrait == i;
+                portraitChoices[i].Ring.color = on ? UIKit.Gold : UIKit.Indigo * 2.2f;
+                portraitChoices[i].Root.localScale = Vector3.one * (on ? 1.12f : 0.92f);
+            }
             int n = pending.PlayerCount;
             setupSummary.text = $"Toi + {n - 1} adversaire{(n > 2 ? "s" : "")} · {RuleSet.Default.CardsToDeal(n)} cartes chacun au premier tour";
         }

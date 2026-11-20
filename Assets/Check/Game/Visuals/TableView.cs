@@ -76,7 +76,7 @@ namespace Check.Game.Visuals
         PaintedScene painted;
 
         /// <summary>Nouvelle partie : un personnage assis par adversaire (index 0 = joueur humain, ignoré).</summary>
-        public void SetPlayers(bool[] female) { if (painted != null) painted.SetPlayers(female); }
+        public void SetPlayers(bool[] female, int humanPortrait = 0) { if (painted != null) painted.SetPlayers(female, humanPortrait); }
 
         /// <summary>Haut de la tête du personnage peint de l'adversaire (monde) ; faux sans décor peint.</summary>
         public bool TryGetHeadPoint(int playerId, out Vector3 world)

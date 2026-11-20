@@ -215,5 +215,19 @@ namespace Check.Tests
             Assert.IsNull(PlayLogEntry.From(new GameEvent { Kind = GameEventKind.TurnStarted }, 0, 1));
             Assert.IsNull(PlayLogEntry.From(new GameEvent { Kind = GameEventKind.PenaltyStacked }, 0, 1));
         }
+
+        // ---------- Prénom du joueur ----------
+
+        [Test]
+        public void PlayerName_IsCleanedAndShortened()
+        {
+            Assert.AreEqual("Toi", PlayerIdentity.Sanitize(null));
+            Assert.AreEqual("Toi", PlayerIdentity.Sanitize("   "));
+            Assert.AreEqual("Kevin", PlayerIdentity.Sanitize("  Kevin "));
+            Assert.AreEqual("Tonton Paul", PlayerIdentity.Sanitize("Tonton    Paul"));
+            Assert.AreEqual("bKevin/b", PlayerIdentity.Sanitize("<b>Kevin</b>"));
+            Assert.AreEqual(PlayerIdentity.MaxLength, PlayerIdentity.Sanitize("Abcdefghijklmnopqrstuvwxyz").Length);
+            Assert.AreEqual("Toi", PlayerIdentity.Sanitize("<>"));
+        }
     }
 }

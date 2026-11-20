@@ -60,7 +60,7 @@ namespace Check.Game.Match
         public int PlayerCount => Match?.PlayerCount ?? Settings.PlayerCount;
 
         public string NameOf(int player) =>
-            player == HumanId ? "Toi" : player >= 0 && player < Names.Length ? Names[player] : "?";
+            player >= 0 && player < Names.Length ? Names[player] : player == HumanId ? PlayerIdentity.DefaultName : "?";
 
         // ---------------------------------------------------------------- Partie
 
@@ -74,8 +74,8 @@ namespace Check.Game.Match
             int n = Mathf.Clamp(Settings.PlayerCount, RuleSet.MinPlayers, RuleSet.MaxPlayers);
             Settings.PlayerCount = n;
             var names = new string[n];
-            names[0] = "Toi";
-            var picked = OpponentNames.Pick(n - 1, rng);
+            names[0] = PlayerIdentity.Sanitize(Settings.PlayerName);
+            var picked = OpponentNames.Pick(n - 1, rng, names[0]);
             for (int i = 1; i < n; i++) names[i] = picked[i - 1];
             int dealer = rng.Next(n);
             save = new SavedGame { Settings = Settings.Clone(), Names = names, Seed = seed, FirstDealer = dealer };
@@ -98,7 +98,7 @@ namespace Check.Game.Match
             roundEndRaised = false;
             reconciled = false;
             aiResult = null;
-            table.Setup(names.Length, Array.ConvertAll(names, OpponentNames.IsFemale));
+            table.Setup(names.Length, Array.ConvertAll(names, OpponentNames.IsFemale), Settings.PlayerPortrait);
             ApplySpeed();
         }
 

@@ -103,16 +103,18 @@ namespace Check.Game.View
         }
 
         bool[] female;
+        int humanPortrait;
 
         /// <summary>
         /// Nouvelle partie : table vide, places pour <paramref name="players"/> joueurs. <paramref name="isFemale"/>
         /// (par joueur) choisit les personnages assis ; sans lui, on garde ceux de la partie en cours.
         /// </summary>
-        public void Setup(int players, bool[] isFemale = null)
+        public void Setup(int players, bool[] isFemale = null, int humanPortrait = -1)
         {
             if (isFemale != null) female = isFemale;
             else if (female == null || female.Length != players) female = DefaultGenders(players);
-            table.SetPlayers(female);
+            if (humanPortrait >= 0) this.humanPortrait = humanPortrait;
+            table.SetPlayers(female, this.humanPortrait);
             StopAllCoroutines();
             running = false;
             queue.Clear();
@@ -818,6 +820,7 @@ namespace Check.Game.View
         {
             texture = null;
             face = new Rect(0f, 0f, 1f, 1f);
+            if (player == HumanId) return PaintedScene.TryGetPortraitImage(humanPortrait, out texture, out face);
             return table != null && table.TryGetPortrait(player, out texture, out face);
         }
 

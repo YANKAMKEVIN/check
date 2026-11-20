@@ -151,8 +151,11 @@ namespace Check.Game.Visuals
 
         // ------------------------------------------------------------------ places
 
-        /// <summary>Assied un personnage par adversaire, de son genre quand c'est possible, sans doublon.</summary>
-        public void SetPlayers(bool[] female)
+        /// <summary>
+        /// Assied un personnage par adversaire, de son genre quand c'est possible, sans doublon ; le portrait choisi
+        /// par le joueur (<paramref name="humanPortrait"/>, 0 = aucun) n'est pris qu'à défaut d'autre.
+        /// </summary>
+        public void SetPlayers(bool[] female, int humanPortrait = 0)
         {
             foreach (var f in seats) if (f != null) Destroy(f.T.gameObject);
             int n = female?.Length ?? 0;
@@ -163,6 +166,9 @@ namespace Check.Game.Visuals
             if (free.Count == 0) return;
             for (int i = free.Count - 1; i > 0; i--) { int k = rng.Next(i + 1); (free[i], free[k]) = (free[k], free[i]); }
             var all = new List<Portrait>(free);
+            // Le visage du joueur passe en dernier recours (tables pleines seulement).
+            int mine = free.FindIndex(p => p.Index == humanPortrait);
+            if (mine >= 0) { var p0 = free[mine]; free.RemoveAt(mine); free.Add(p0); }
 
             for (int id = 1; id < n; id++)
             {
@@ -177,7 +183,8 @@ namespace Check.Game.Visuals
                         var p = free[k];
                         bool genre = p.Female == female[id];
                         bool fits = (p.Facing == 0) == center;
-                        if ((pass == 0 && genre && fits) || (pass == 1 && genre) || pass == 2) pick = k;
+                        bool notMine = p.Index != humanPortrait;
+                        if ((pass == 0 && genre && fits && notMine) || (pass == 1 && genre && notMine) || pass == 2) pick = k;
                     }
                 seats[id] = Seat(free[pick], spot, id);
                 free.RemoveAt(pick);
