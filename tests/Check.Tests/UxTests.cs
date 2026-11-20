@@ -189,5 +189,31 @@ namespace Check.Tests
             StringAssert.Contains("sous le tas", CardHelp.Effect(C("2C")));
             Assert.AreEqual("9♥ : carte simple, se pose sur un cœur ou un 9.", CardHelp.Effect(C("9H")));
         }
+
+        // ---------- Historique du tour ----------
+
+        [Test]
+        public void PlayLog_MapsEventsToReadableLines()
+        {
+            var play = PlayLogEntry.From(Played("8H 8S"), 3, 2);
+            Assert.AreEqual(LogKind.Play, play.Kind);
+            Assert.AreEqual(3, play.Player);
+            Assert.AreEqual(2, play.Cards.Count);
+            Assert.AreEqual("pose 2 cartes", play.Action);
+            Assert.IsFalse(play.IsPenalty);
+
+            var pen = PlayLogEntry.From(new GameEvent { Kind = GameEventKind.PenaltyDrawn, Count = 4, Cards = Cs("3C 4C 5C 6C") }, 1, 2);
+            Assert.IsTrue(pen.IsPenalty);
+            Assert.AreEqual(0, pen.Cards.Count, "les cartes piochées restent cachées");
+            Assert.AreEqual("+4 cartes", pen.Action);
+
+            var round = PlayLogEntry.From(new GameEvent { Kind = GameEventKind.RoundStarted, Seat = 2, Count = 6 }, 1, 3);
+            Assert.AreEqual(-1, round.Player);
+            Assert.AreEqual("Tour 3", round.Action);
+
+            Assert.IsTrue(PlayLogEntry.From(new GameEvent { Kind = GameEventKind.CheckForgotten, Count = 2 }, 0, 1).IsPenalty);
+            Assert.IsNull(PlayLogEntry.From(new GameEvent { Kind = GameEventKind.TurnStarted }, 0, 1));
+            Assert.IsNull(PlayLogEntry.From(new GameEvent { Kind = GameEventKind.PenaltyStacked }, 0, 1));
+        }
     }
 }

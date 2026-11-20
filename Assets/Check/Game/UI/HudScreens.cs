@@ -46,7 +46,8 @@ namespace Check.Game.UI
 
         public bool IsBlockingOverlayOpen =>
             homeOverlay.activeSelf || setupOverlay.activeSelf || rulesOverlay.activeSelf || pauseOverlay.activeSelf ||
-            suitOverlay.activeSelf || roundOverlay.activeSelf || matchOverlay.activeSelf || statsOverlay.activeSelf;
+            suitOverlay.activeSelf || roundOverlay.activeSelf || matchOverlay.activeSelf || statsOverlay.activeSelf ||
+            historyOverlay.activeSelf;
 
         void BuildScreens()
         {
@@ -60,6 +61,7 @@ namespace Check.Game.UI
             BuildRoundEnd();
             BuildMatchEnd();
             BuildStats();
+            BuildHistory();
         }
 
         GameObject Overlay(string name, out RectTransform card, float width, float height, Color accent, float dim = 0.62f)
@@ -205,7 +207,7 @@ namespace Check.Game.UI
 
         void HideAll()
         {
-            foreach (var o in new[] { homeOverlay, setupOverlay, rulesOverlay, pauseOverlay, suitOverlay, roundOverlay, matchOverlay, statsOverlay })
+            foreach (var o in new[] { homeOverlay, setupOverlay, rulesOverlay, pauseOverlay, suitOverlay, roundOverlay, matchOverlay, statsOverlay, historyOverlay })
                 o.SetActive(false);
             if (suitCallback != null) { var cb = suitCallback; suitCallback = null; cb(null); }
             if (autoNext != null) { StopCoroutine(autoNext); autoNext = null; }
@@ -758,6 +760,7 @@ namespace Check.Game.UI
                 return;
             }
             if (statsOverlay.activeSelf) { ShowHome(); return; }
+            if (historyOverlay.activeSelf) { Show(historyOverlay, false); return; }
             if (pauseOverlay.activeSelf) { Show(pauseOverlay, false); return; }
             if (homeOverlay.activeSelf)
             {

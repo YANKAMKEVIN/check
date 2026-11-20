@@ -130,9 +130,14 @@ namespace Check.Game.UI
             // Journal des derniers coups.
             var logPanel = UIKit.Panel("Log", hud, new Color(0.03f, 0.03f, 0.08f, 0.85f), true, UIKit.Indigo * 2f);
             UIKit.Anchor(logPanel.rectTransform, new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(24, -120), new Vector2(420, 210));
-            logPanel.raycastTarget = false;
+            // Toucher le journal ouvre l'historique complet du tour.
+            var logButton = logPanel.gameObject.AddComponent<Button>();
+            logButton.targetGraphic = logPanel;
+            logButton.onClick.AddListener(() => { sfx.Play(Sfx.Click); ShowHistory(); });
             logText = UIKit.Label("Lines", logPanel.transform, "", 25, UIKit.TextDim, TextAnchor.UpperLeft);
-            UIKit.Stretch(logText.rectTransform, 18, 10, 14, 12);
+            UIKit.Stretch(logText.rectTransform, 18, 34, 14, 12);
+            var more = UIKit.Label("More", logPanel.transform, "Tout voir ›", 21, UIKit.Gold, TextAnchor.LowerRight, FontStyle.Bold);
+            UIKit.Stretch(more.rectTransform, 18, 6, 16, 6);
             logText.supportRichText = true;
             logText.horizontalOverflow = HorizontalWrapMode.Overflow;
             logText.verticalOverflow = VerticalWrapMode.Truncate;
@@ -320,6 +325,7 @@ namespace Check.Game.UI
             humanBadge.Name.text = game.NameOf(GameController.HumanId);
             for (int p = 0; p < n; p++) SetMedallion(badges[p].Face, p);
             log.Clear();
+            history.Clear();
             logText.text = "";
             flashUntil = 0f;
             eventStatusUntil = 0f;
@@ -349,6 +355,7 @@ namespace Check.Game.UI
         {
             var e = ev.E;
             int p = ev.Player;
+            RecordHistory(ev);
             string who = p >= 0 ? game.NameOf(p) : "";
             bool me = p == GameController.HumanId;
             switch (e.Kind)
@@ -446,7 +453,7 @@ namespace Check.Game.UI
             logText.text = string.Join("\n", log);
             var panel = (RectTransform)logText.transform.parent;
             // Hauteur réelle du texte : la police système d'Android a des lignes plus hautes que celle du Mac.
-            panel.sizeDelta = new Vector2(panel.sizeDelta.x, 24f + Mathf.Max(31f * log.Count, logText.preferredHeight));
+            panel.sizeDelta = new Vector2(panel.sizeDelta.x, 48f + Mathf.Max(31f * log.Count, logText.preferredHeight));
         }
 
         void SetEventStatus(string text, float seconds)
@@ -478,7 +485,7 @@ namespace Check.Game.UI
         void Update()
         {
             UpdateLayout();
-            bool menuLike = homeOverlay.activeSelf || setupOverlay.activeSelf || pauseOverlay.activeSelf || statsOverlay.activeSelf ||
+            bool menuLike = homeOverlay.activeSelf || setupOverlay.activeSelf || pauseOverlay.activeSelf || statsOverlay.activeSelf || historyOverlay.activeSelf ||
                             (rulesOverlay.activeSelf && !game.HasGame) || (rulesOverlay.activeSelf && rulesFromPause);
             game.Paused = menuLike;
             AnimatePodium();
