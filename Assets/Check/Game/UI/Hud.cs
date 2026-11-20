@@ -76,6 +76,7 @@ namespace Check.Game.UI
 
             BuildHud();
             BuildScreens();
+            BuildTips();
 
             human.UiBlocked = () => IsBlockingOverlayOpen;
             human.AskSuit = AskSuit;
@@ -440,6 +441,8 @@ namespace Check.Game.UI
                     SetEventStatus(me ? "Tu gagnes la partie !" : $"{who} gagne la partie !", 5f);
                     break;
             }
+            var tip = FirstGameTips.ForEvent(e);
+            if (tip.HasValue) TryTip(tip.Value, false);
         }
 
         void Say(int player, string text, Color color, float seconds)
@@ -502,6 +505,7 @@ namespace Check.Game.UI
             RefreshBadges();
             RefreshPileIndicators();
             RefreshActions();
+            RefreshTips();
             roundInfo.text = game.Match != null ? $"Tour {game.Match.RoundNumber} · {game.Match.Alive.Count} en jeu" : "";
             UIKit.SetButtonText(speedButton, game.Settings.Speed == AiSpeed.Fast ? "Vitesse ×2" : "Vitesse ×1");
         }

@@ -141,6 +141,9 @@ namespace Check.Game.Visuals
             return tex;
         }
 
+        /// <summary>Rectangle de la face de <paramref name="card"/> dans <see cref="Atlas"/> (pour l'afficher dans l'interface).</summary>
+        public static Rect FaceUv(Card card) => CellUv(card.Id);
+
         static Rect CellUv(int slot)
         {
             int col = slot % Cols, row = slot / Cols;

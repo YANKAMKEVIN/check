@@ -1,4 +1,6 @@
 using System;
+using Check.Core;
+using Check.Game.Visuals;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -176,6 +178,23 @@ namespace Check.Game.UI
             label.resizeTextMaxSize = fontSize;
             if (onClick != null) btn.onClick.AddListener(() => onClick());
             return btn;
+        }
+
+        /// <summary>Petite carte dessinée avec la vraie face de l'atlas des cartes.</summary>
+        public static RawImage MiniCard(string name, Transform parent, Card card)
+        {
+            var rt = Rect(name, parent);
+            var img = rt.gameObject.AddComponent<RawImage>();
+            img.texture = CardAtlas.Atlas;
+            img.uvRect = CardAtlas.FaceUv(card);
+            img.raycastTarget = false;
+            return img;
+        }
+
+        public static void SetMiniCard(RawImage img, Card card)
+        {
+            img.texture = CardAtlas.Atlas;
+            img.uvRect = CardAtlas.FaceUv(card);
         }
 
         public static void SetButtonText(Button b, string text)

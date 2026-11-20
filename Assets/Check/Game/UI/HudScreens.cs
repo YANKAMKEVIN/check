@@ -297,22 +297,11 @@ namespace Check.Game.UI
 
         // ---------------------------------------------------------------- Règles
 
-        const string RulesText =
-            "<b><color=#FFCC5C>But</color></b>\nÊtre le premier à se débarrasser de toutes ses cartes. 54 cartes (52 + 2 jokers), de 2 à 10 joueurs ; " +
-            "7 cartes chacun à 2-3 joueurs, 6 à 4-5, 5 à 6-7, 4 à 8-10.\n\n" +
-            "<b><color=#FFCC5C>À ton tour</color></b>\nPose une carte de la <b>même couleur</b> (♠ ♣ <color=#FF5C73>♥ ♦</color>) ou de la <b>même valeur</b> que la carte du dessus. " +
-            "Tu peux poser d'un coup plusieurs cartes de même valeur (doubler, tripler) : la dernière posée devient le dessus. " +
-            "Sinon, pioche une carte : si elle est jouable tu peux la poser, sinon tu passes.\n\n" +
-            "<b><color=#FFCC5C>Cartes spéciales</color></b>\n" +
-            "<b>As</b> : le suivant passe son tour (deux As = deux joueurs sautés).\n" +
-            "<b>7</b> : le suivant pioche 2 cartes, sauf s'il contre avec un 7 (le cumul passe au suivant, +2 par 7).\n" +
-            "<b>Joker</b> : le suivant pioche 4 cartes. Le noir se pose sur du noir, le rouge sur du rouge ; il ne se contre pas.\n" +
-            "<b>Valet</b> : tu demandes une couleur ; le suivant doit la jouer (ou poser un Valet).\n" +
-            "<b>2</b> : passe-partout, se glisse sous le tas ; le dessus ne change pas. Il ne contre pas une pénalité.\n\n" +
-            "<b><color=#FFCC5C>« Check ! » et « Games ! »</color></b>\nQuand ta pose te laisse une seule carte, touche le bouton <b>Check !</b> avant de poser. " +
-            "Oublié ? Tu pioches des cartes de pénalité. Ta dernière carte posée : « Games ! », tu es qualifié.\n\n" +
-            "<b><color=#FFCC5C>Éliminations</color></b>\nLe dernier joueur à avoir encore des cartes est éliminé. On redistribue entre les autres, " +
-            "jusqu'à ce qu'il ne reste qu'un joueur : le vainqueur. À deux, le premier qui finit gagne.";
+        Text rulesText;
+        RectTransform rulesCards;
+        ScrollRect rulesScroll;
+        Button[] rulesTabs;
+        int rulesSheet;
 
         void BuildRules()
         {
@@ -320,12 +309,26 @@ namespace Check.Game.UI
             var title = UIKit.Label("Title", card, "Règles du Check", 56, UIKit.Gold, TextAnchor.MiddleCenter, FontStyle.Bold);
             UIKit.Anchor(title.rectTransform, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0, -24), new Vector2(900, 76));
 
-            // Texte défilant à gauche.
+            // Fiches à gauche : un onglet par fiche, puis la fiche (cartes réelles + texte), défilante si besoin.
+            var tabs = UIKit.Rect("Tabs", card);
+            tabs.anchorMin = new Vector2(0f, 1f);
+            tabs.anchorMax = new Vector2(0.6f, 1f);
+            tabs.pivot = new Vector2(0.5f, 1f);
+            tabs.offsetMin = new Vector2(44, -184);
+            tabs.offsetMax = new Vector2(-16, -110);
+            UIKit.HStack(tabs, 8);
+            rulesTabs = new Button[RulesSheets.All.Count];
+            for (int i = 0; i < rulesTabs.Length; i++)
+            {
+                int index = i;
+                rulesTabs[i] = UIKit.Button("Tab" + i, tabs, RulesSheets.All[i].Title, () => { sfx.Play(Sfx.Click); ShowRulesSheet(index); }, UIKit.Gold, 24);
+            }
+
             var scrollRt = UIKit.Rect("Scroll", card);
             scrollRt.anchorMin = new Vector2(0f, 0f);
             scrollRt.anchorMax = new Vector2(0.6f, 1f);
             scrollRt.offsetMin = new Vector2(44, 130);
-            scrollRt.offsetMax = new Vector2(-16, -110);
+            scrollRt.offsetMax = new Vector2(-16, -196);
             var bg = scrollRt.gameObject.AddComponent<Image>();
             bg.sprite = UIKit.Rounded;
             bg.type = Image.Type.Sliced;
@@ -341,19 +344,29 @@ namespace Check.Game.UI
             content.pivot = new Vector2(0.5f, 1f);
             content.offsetMin = new Vector2(24, 0);
             content.offsetMax = new Vector2(-24, 0);
-            var text = UIKit.Label("Text", content, RulesText, 28, UIKit.Text, TextAnchor.UpperLeft);
+            rulesCards = UIKit.Rect("Cards", content);
+            var cardsRow = UIKit.HStack(rulesCards, 14);
+            cardsRow.childAlignment = TextAnchor.MiddleLeft;
+            cardsRow.childForceExpandWidth = false;
+            UIKit.Size(rulesCards.gameObject.AddComponent<LayoutElement>(), 170);
+            foreach (var c in RulesSheets.All[2].Cards)
+                UIKit.Size(UIKit.MiniCard("Card", rulesCards, c), 170, 122);
+            var text = UIKit.Label("Text", content, "", 28, UIKit.Text, TextAnchor.UpperLeft);
             text.supportRichText = true;
             text.lineSpacing = 1.08f;
             UIKit.Stretch(text.rectTransform, 0, 0, 0, 20);
+            rulesText = text;
             var fitter = content.gameObject.AddComponent<ContentSizeFitter>();
             fitter.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
             var cv = content.gameObject.AddComponent<VerticalLayoutGroup>();
             cv.padding = new RectOffset(0, 0, 20, 24);
+            cv.spacing = 18;
             cv.childControlHeight = true;
             cv.childControlWidth = true;
             cv.childForceExpandHeight = false;
             scroll.content = content;
             scroll.viewport = scrollRt;
+            rulesScroll = scroll;
 
             // Réglages à droite.
             var side = UIKit.Rect("Settings", card);
@@ -371,6 +384,12 @@ namespace Check.Game.UI
             foreach (var b in ruleButtons) UIKit.Size(b, 118);
             var note = UIKit.Label("Note", side, "Les changements s'appliquent à la prochaine partie.", 24, UIKit.TextDim);
             UIKit.Size(note, 70);
+            UIKit.Size(UIKit.Button("Tips", side, "Revoir les astuces de la première partie", () =>
+            {
+                sfx.Play(Sfx.Click);
+                ResetTips();
+                Flash("Les astuces reviendront pendant la partie");
+            }, UIKit.Cyan, 26), 84);
 
             var close = UIKit.Button("Close", card, "Fermer", () =>
             {
@@ -398,11 +417,31 @@ namespace Check.Game.UI
             Mark(ruleButtons[2], pending.JokerCountersSeven, UIKit.Magenta);
         }
 
+        void ShowRulesSheet(int index)
+        {
+            rulesSheet = Mathf.Clamp(index, 0, RulesSheets.All.Count - 1);
+            var sheet = RulesSheets.All[rulesSheet];
+            rulesText.text = sheet.Body;
+            int k = 0;
+            foreach (Transform child in rulesCards)
+            {
+                var img = child.GetComponent<RawImage>();
+                bool on = k < sheet.Cards.Count;
+                child.gameObject.SetActive(on);
+                if (on && img != null) UIKit.SetMiniCard(img, sheet.Cards[k]);
+                k++;
+            }
+            rulesCards.gameObject.SetActive(sheet.Cards.Count > 0);
+            for (int i = 0; i < rulesTabs.Length; i++) Mark(rulesTabs[i], i == rulesSheet, UIKit.Gold);
+            rulesScroll.verticalNormalizedPosition = 1f;
+        }
+
         public void ShowRules(bool fromPause)
         {
             rulesFromPause = fromPause;
             pending = GameSettings.Load();
             RefreshRules();
+            ShowRulesSheet(rulesSheet);
             if (fromPause) Show(pauseOverlay, false);
             Show(rulesOverlay, true);
         }

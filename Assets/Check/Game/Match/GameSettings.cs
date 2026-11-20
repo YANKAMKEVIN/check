@@ -30,6 +30,8 @@ namespace Check.Game.Match
         /// <summary>Le joker de la couleur du 7 contre (et alourdit) un cumul de 7.</summary>
         public bool JokerCountersSeven = true;
         public bool Haptics = true;
+        /// <summary>Bulles d'apprentissage déjà vues (masque de <see cref="TipId"/>).</summary>
+        public int TipsSeen;
 
         public RuleSet ToRuleSet()
         {
