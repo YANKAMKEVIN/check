@@ -18,7 +18,8 @@ namespace Check.Game.UI
         Action<Suit?> suitCallback;
         GameSettings pending;
 
-        Button resumeSavedButton, soundButton, hapticsButton, pauseSpeedButton, pauseSoundButton;
+        Button resumeSavedButton, soundButton, hapticsButton, pauseSoundButton;
+        Button[] pauseSpeedButtons, jackButtons;
         Button[] playerButtons, levelButtons, speedButtons, ambienceButtons;
         Text setupSummary;
         Button[] ruleButtons;
@@ -170,13 +171,13 @@ namespace Check.Game.UI
             UIKit.Button("Stats", info, "Mon carnet", () => { sfx.Play(Sfx.Click); ShowStats(); }, UIKit.Cyan, 40);
 
             var row = Row(card, 96);
-            soundButton = UIKit.Button("Sound", row, "", () =>
+            soundButton = UIKit.Switch("Sound", row, "Son", () =>
             {
                 sfx.Muted = !sfx.Muted;
                 sfx.Play(Sfx.Click);
                 RefreshToggles();
-            }, UIKit.Cyan, 32);
-            hapticsButton = UIKit.Button("Haptics", row, "", () =>
+            }, 32);
+            hapticsButton = UIKit.Switch("Haptics", row, "Vibrations", () =>
             {
                 pending.Haptics = !pending.Haptics;
                 Haptics.Enabled = pending.Haptics;
@@ -184,7 +185,7 @@ namespace Check.Game.UI
                 sfx.Play(Sfx.Click);
                 Haptics.Light();
                 RefreshToggles();
-            }, UIKit.Cyan, 32);
+            }, 32);
 
             if (Application.platform != RuntimePlatform.IPhonePlayer)
                 UIKit.Size(UIKit.Button("Quit", card, "Quitter", () => { game.Persist(); Application.Quit(); }, UIKit.Magenta, 34), 84);
@@ -192,10 +193,10 @@ namespace Check.Game.UI
 
         void RefreshToggles()
         {
-            UIKit.SetButtonText(soundButton, sfx.Muted ? "Son : non" : "Son : oui");
-            UIKit.SetButtonText(hapticsButton, pending.Haptics ? "Vibrations : oui" : "Vibrations : non");
-            UIKit.SetButtonText(pauseSoundButton, sfx.Muted ? "Son : non" : "Son : oui");
-            UIKit.SetButtonText(pauseSpeedButton, game.Settings.Speed == AiSpeed.Fast ? "Adversaires : rapides" : "Adversaires : normaux");
+            UIKit.SetSwitch(soundButton, !sfx.Muted);
+            UIKit.SetSwitch(hapticsButton, pending.Haptics);
+            UIKit.SetSwitch(pauseSoundButton, !sfx.Muted);
+            for (int i = 0; i < pauseSpeedButtons.Length; i++) Mark(pauseSpeedButtons[i], (int)game.Settings.Speed == i, UIKit.Cyan);
             for (int i = 0; i < ambienceButtons.Length; i++) Mark(ambienceButtons[i], sfx.AmbienceLevel == i, UIKit.Cyan);
         }
 
@@ -455,11 +456,18 @@ namespace Check.Game.UI
             var sv = UIKit.VStack(side, 14);
             sv.childAlignment = TextAnchor.UpperCenter;
             UIKit.Size(UIKit.Label("SettingsTitle", side, "Règles réglables", 34, UIKit.Cyan, TextAnchor.MiddleCenter, FontStyle.Bold), 50);
-            ruleButtons = new Button[3];
-            ruleButtons[0] = UIKit.Button("ForgotCheck", side, "", () => { pending.ForgotCheckPenalty = !pending.ForgotCheckPenalty; OnRuleChanged(); }, UIKit.Magenta, 28);
-            ruleButtons[1] = UIKit.Button("JackWild", side, "", () => { pending.JackIsWild = !pending.JackIsWild; OnRuleChanged(); }, UIKit.Magenta, 28);
-            ruleButtons[2] = UIKit.Button("JokerSeven", side, "", () => { pending.JokerCountersSeven = !pending.JokerCountersSeven; OnRuleChanged(); }, UIKit.Magenta, 28);
-            foreach (var b in ruleButtons) UIKit.Size(b, 118);
+            ruleButtons = new Button[2];
+            ruleButtons[0] = UIKit.Switch("ForgotCheck", side, "Check oublié : 2 cartes de pénalité", () => { pending.ForgotCheckPenalty = !pending.ForgotCheckPenalty; OnRuleChanged(); }, 28);
+            UIKit.Size(ruleButtons[0], 104);
+            UIKit.Size(UIKit.Label("JackLabel", side, "Le Valet se pose", 26, UIKit.TextDim, TextAnchor.MiddleCenter, FontStyle.Bold), 34);
+            var jackRow = UIKit.Rect("JackRow", side);
+            UIKit.HStack(jackRow, 10);
+            UIKit.Size(jackRow.gameObject.AddComponent<LayoutElement>(), 86);
+            jackButtons = new Button[2];
+            jackButtons[0] = UIKit.Button("JackWild", jackRow, "sur tout", () => { pending.JackIsWild = true; OnRuleChanged(); }, UIKit.Magenta, 28);
+            jackButtons[1] = UIKit.Button("JackStrict", jackRow, "couleur ou valeur", () => { pending.JackIsWild = false; OnRuleChanged(); }, UIKit.Magenta, 28);
+            ruleButtons[1] = UIKit.Switch("JokerSeven", side, "Le joker contre le 7", () => { pending.JokerCountersSeven = !pending.JokerCountersSeven; OnRuleChanged(); }, 28);
+            UIKit.Size(ruleButtons[1], 104);
             var note = UIKit.Label("Note", side, "Les changements s'appliquent à la prochaine partie.", 24, UIKit.TextDim);
             UIKit.Size(note, 70);
             UIKit.Size(UIKit.Button("Tips", side, "Revoir les astuces de la première partie", () =>
@@ -487,12 +495,10 @@ namespace Check.Game.UI
 
         void RefreshRules()
         {
-            UIKit.SetButtonText(ruleButtons[0], "Check oublié : " + (pending.ForgotCheckPenalty ? "2 cartes de pénalité" : "pas de pénalité"));
-            UIKit.SetButtonText(ruleButtons[1], "Valet : " + (pending.JackIsWild ? "se pose sur tout" : "couleur ou valeur"));
-            UIKit.SetButtonText(ruleButtons[2], "Joker contre le 7 : " + (pending.JokerCountersSeven ? "oui" : "non"));
-            Mark(ruleButtons[0], pending.ForgotCheckPenalty, UIKit.Magenta);
-            Mark(ruleButtons[1], pending.JackIsWild, UIKit.Magenta);
-            Mark(ruleButtons[2], pending.JokerCountersSeven, UIKit.Magenta);
+            UIKit.SetSwitch(ruleButtons[0], pending.ForgotCheckPenalty);
+            UIKit.SetSwitch(ruleButtons[1], pending.JokerCountersSeven);
+            Mark(jackButtons[0], pending.JackIsWild, UIKit.Magenta);
+            Mark(jackButtons[1], !pending.JackIsWild, UIKit.Magenta);
         }
 
         void ShowRulesSheet(int index)
@@ -534,15 +540,23 @@ namespace Check.Game.UI
             UIKit.Size(UIKit.Button("Resume", card, "Reprendre", () => { sfx.Play(Sfx.Click); Show(pauseOverlay, false); }, UIKit.Gold, 46), 112);
             UIKit.Size(UIKit.Button("New", card, "Nouvelle partie", () => { sfx.Play(Sfx.Click); ShowSetup(); }, UIKit.Cyan, 38), 98);
             UIKit.Size(UIKit.Button("Rules", card, "Règles", () => { sfx.Play(Sfx.Click); ShowRules(true); }, UIKit.Cyan, 38), 98);
-            pauseSpeedButton = UIKit.Button("Speed", card, "", () =>
+            // Rythme des adversaires : deux segments.
+            var speedRow = Row(card, 86, 10);
+            UIKit.Size(UIKit.Label("SpeedLabel", speedRow, "Adversaires", 28, UIKit.TextDim, TextAnchor.MiddleCenter, FontStyle.Bold), -1, 170, 0f);
+            pauseSpeedButtons = new Button[2];
+            string[] speedNames = { "normaux", "rapides" };
+            for (int i = 0; i < 2; i++)
             {
-                sfx.Play(Sfx.Click);
-                game.SetSpeed(game.Settings.Speed == AiSpeed.Fast ? AiSpeed.Normal : AiSpeed.Fast);
-                SavePreferredSpeed();
-                RefreshToggles();
-            }, UIKit.Cyan, 34);
-            UIKit.Size(pauseSpeedButton, 92);
-            pauseSoundButton = UIKit.Button("Sound", card, "", () => { sfx.Muted = !sfx.Muted; sfx.Play(Sfx.Click); RefreshToggles(); }, UIKit.Cyan, 34);
+                var speed = (AiSpeed)i;
+                pauseSpeedButtons[i] = UIKit.Button("Speed" + i, speedRow, speedNames[i], () =>
+                {
+                    sfx.Play(Sfx.Click);
+                    game.SetSpeed(speed);
+                    SavePreferredSpeed();
+                    RefreshToggles();
+                }, UIKit.Cyan, 30);
+            }
+            pauseSoundButton = UIKit.Switch("Sound", card, "Son", () => { sfx.Muted = !sfx.Muted; sfx.Play(Sfx.Click); RefreshToggles(); }, 34);
             UIKit.Size(pauseSoundButton, 92);
             // Volume de l'ambiance du wagon (roulement de la rame).
             var amb = Row(card, 76, 10);

@@ -33,6 +33,7 @@ namespace Check.Game.UI
         GameObject hudGroup;
         Text status, hint, roundInfo, logText, pileLabel;
         Button menuButton, speedButton;
+        Image speedTri1, speedTri2;
         public Button PlayButton { get; private set; }
         public Button CheckButton { get; private set; }
         /// <summary>Piocher / Prendre N cartes / Passer, selon la situation.</summary>
@@ -99,7 +100,10 @@ namespace Check.Game.UI
             var hud = hudGroup.transform;
 
             menuButton = UIKit.Button("Menu", hud, "Menu", () => { sfx.Play(Sfx.Click); ShowPause(); }, UIKit.Gold, 34);
-            UIKit.Anchor((RectTransform)menuButton.transform, new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(24, -20), new Vector2(170, 84));
+            UIKit.Anchor((RectTransform)menuButton.transform, new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(24, -20), new Vector2(104, 84));
+            // Pictogramme « menu » : trois barres laiton.
+            var bars = UIKit.Pictogram(menuButton);
+            for (int i = -1; i <= 1; i++) UIKit.PictoPart(bars, UIKit.Rounded, new Vector2(0, i * 16), new Vector2(50, 8), UIKit.Gold);
 
             // Bandeau d'état.
             var banner = UIKit.Panel("StatusBanner", hud, UIKit.GlassStrong, true, UIKit.Gold);
@@ -126,7 +130,11 @@ namespace Check.Game.UI
                 game.SetSpeed(game.Settings.Speed == AiSpeed.Fast ? AiSpeed.Normal : AiSpeed.Fast);
                 SavePreferredSpeed();
             }, UIKit.Cyan, 28);
-            UIKit.Anchor((RectTransform)speedButton.transform, new Vector2(1f, 1f), new Vector2(1f, 1f), new Vector2(-24, -66), new Vector2(230, 70));
+            UIKit.Anchor((RectTransform)speedButton.transform, new Vector2(1f, 1f), new Vector2(1f, 1f), new Vector2(-24, -66), new Vector2(120, 70));
+            // Pictogramme « vitesse » : un triangle (normal) ou deux (rapide).
+            var speedIcon = UIKit.Pictogram(speedButton);
+            speedTri1 = UIKit.PictoPart(speedIcon, UIKit.Triangle, new Vector2(0, 0), new Vector2(42, 42), UIKit.Cyan);
+            speedTri2 = UIKit.PictoPart(speedIcon, UIKit.Triangle, new Vector2(16, 0), new Vector2(42, 42), UIKit.Cyan);
 
             // Journal des derniers coups.
             var logPanel = UIKit.Panel("Log", hud, new Color(0.03f, 0.03f, 0.08f, 0.85f), true, UIKit.Indigo * 2f);
@@ -508,7 +516,9 @@ namespace Check.Game.UI
             RefreshTips();
             RefreshCardHelp();
             roundInfo.text = game.Match != null ? $"Tour {game.Match.RoundNumber} · {game.Match.Alive.Count} en jeu" : "";
-            UIKit.SetButtonText(speedButton, game.Settings.Speed == AiSpeed.Fast ? "Vitesse ×2" : "Vitesse ×1");
+            bool fast = game.Settings.Speed == AiSpeed.Fast;
+            speedTri2.enabled = fast;
+            speedTri1.rectTransform.anchoredPosition = new Vector2(fast ? -16f : 0f, 0f);
         }
 
         /// <summary>Cartes en main des joueurs encore en course dans le tour affiché.</summary>
