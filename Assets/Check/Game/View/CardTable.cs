@@ -821,6 +821,15 @@ namespace Check.Game.View
             return table != null && table.TryGetPortrait(player, out texture, out face);
         }
 
+        /// <summary>Point d'écran juste au-dessus de la tête du personnage peint de l'adversaire.</summary>
+        public bool TryGetHeadScreenPoint(int player, out Vector3 screen)
+        {
+            screen = Vector3.zero;
+            if (table == null || cam == null || !table.TryGetHeadPoint(player, out var world)) return false;
+            screen = cam.WorldToScreenPoint(world);
+            return screen.z > 0f;
+        }
+
         /// <summary>Effet de célébration de « Games » à la place du joueur.</summary>
         public void Celebrate(int player)
         {

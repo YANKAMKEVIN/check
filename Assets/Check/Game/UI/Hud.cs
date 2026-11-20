@@ -205,8 +205,9 @@ namespace Check.Game.UI
         {
             public RectTransform Root;
             public CanvasGroup Group;
-            public Image Ring, Avatar, MarkPanel;
-            public Text Initial, Name, Count, Mark;
+            public Image Ring, MarkPanel, Plate;
+            public Text Name, Count, Mark;
+            public Medallion Face;
             public RectTransform Bubble;
             public Text BubbleText;
             public Image BubblePanel;
@@ -215,10 +216,14 @@ namespace Check.Game.UI
 
             public SeatBadge(Transform parent, bool human)
             {
+                // Adversaires : plaque étroite (visage, prénom, cartes) pour ne pas cacher le personnage peint.
+                float avatar = human ? 76f : 58f;
+                float left = human ? 100f : 78f;
                 var panel = UIKit.Panel(human ? "HumanBadge" : "Badge", parent, new Color(0.05f, 0.05f, 0.12f, 0.8f), true, UIKit.Indigo * 2.2f);
                 panel.raycastTarget = false;
                 Root = panel.rectTransform;
-                Root.sizeDelta = new Vector2(250, 96);
+                Root.sizeDelta = human ? new Vector2(250, 96) : new Vector2(224, 72);
+                Plate = Root.Find("Outline").GetComponent<Image>();
                 Group = Root.gameObject.AddComponent<CanvasGroup>();
                 Group.blocksRaycasts = false;
 
@@ -227,35 +232,20 @@ namespace Check.Game.UI
                 Ring.sprite = UIKit.Glow;
                 Ring.color = UIKit.Cyan;
                 Ring.raycastTarget = false;
-                UIKit.Anchor(Ring.rectTransform, new Vector2(0f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(50, 0), new Vector2(150, 150));
+                UIKit.Anchor(Ring.rectTransform, new Vector2(0f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(left * 0.5f, 0), new Vector2(avatar * 2f, avatar * 2f));
 
-                Avatar = new GameObject("Avatar", typeof(RectTransform)).AddComponent<Image>();
-                Avatar.transform.SetParent(Root, false);
-                Avatar.sprite = UIKit.Circle;
-                Avatar.color = UIKit.Indigo;
-                Avatar.raycastTarget = false;
-                UIKit.Anchor(Avatar.rectTransform, new Vector2(0f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(50, 0), new Vector2(76, 76));
-                var avatarRing = new GameObject("AvatarRing", typeof(RectTransform)).AddComponent<Image>();
-                avatarRing.transform.SetParent(Avatar.transform, false);
-                avatarRing.sprite = UIKit.RoundedOutline;
-                avatarRing.type = Image.Type.Sliced;
-                avatarRing.color = UIKit.Gold;
-                avatarRing.raycastTarget = false;
-                UIKit.Stretch(avatarRing.rectTransform, -3, -3, -3, -3);
-                avatarRing.pixelsPerUnitMultiplier = 0.55f;
-
-                Initial = UIKit.Label("Initial", Avatar.transform, "?", 38, UIKit.Gold, TextAnchor.MiddleCenter, FontStyle.Bold);
-                UIKit.Stretch(Initial.rectTransform);
+                Face = BuildMedallion(Root, avatar, UIKit.Gold);
+                UIKit.Anchor(Face.Root, new Vector2(0f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(left * 0.5f, 0), new Vector2(avatar, avatar));
 
                 Name = UIKit.Label("Name", Root, "", 28, UIKit.Text, TextAnchor.MiddleLeft, FontStyle.Bold);
-                UIKit.Stretch(Name.rectTransform, 100, 46, 10, 6);
+                UIKit.Stretch(Name.rectTransform, left, human ? 46 : 34, 10, 4);
                 Name.horizontalOverflow = HorizontalWrapMode.Overflow;
                 Name.resizeTextForBestFit = true;
                 Name.resizeTextMinSize = 16;
                 Name.resizeTextMaxSize = 28;
                 Name.horizontalOverflow = HorizontalWrapMode.Wrap;
-                Count = UIKit.Label("Count", Root, "", 24, UIKit.Cyan, TextAnchor.MiddleLeft, FontStyle.Bold);
-                UIKit.Stretch(Count.rectTransform, 100, 8, 10, 50);
+                Count = UIKit.Label("Count", Root, "", human ? 24 : 22, UIKit.Cyan, TextAnchor.MiddleLeft, FontStyle.Bold);
+                UIKit.Stretch(Count.rectTransform, left, 4, 10, human ? 50 : 38);
 
                 MarkPanel = UIKit.Panel("Mark", Root, new Color(0.05f, 0.2f, 0.12f, 0.95f), true, UIKit.Success);
                 // Badge du joueur (en bas de l'écran) : la marque passe au-dessus.
@@ -323,14 +313,11 @@ namespace Check.Game.UI
                 // Beaucoup de joueurs : badges plus compacts pour ne pas se chevaucher.
                 b.Root.localScale = Vector3.one * (n <= 5 ? 1f : n <= 7 ? 0.86f : 0.74f);
                 b.Name.text = game.NameOf(p);
-                b.Initial.text = Initial(game.NameOf(p));
-                b.Avatar.color = AvatarColor(p);
                 badges[p] = b;
             }
             badges[0] = humanBadge;
-            humanBadge.Name.text = "Toi";
-            humanBadge.Initial.text = "★";
-            humanBadge.Avatar.color = new Color(0.30f, 0.14f, 0.05f);
+            humanBadge.Name.text = game.NameOf(GameController.HumanId);
+            for (int p = 0; p < n; p++) SetMedallion(badges[p].Face, p);
             log.Clear();
             logText.text = "";
             flashUntil = 0f;
@@ -590,7 +577,10 @@ namespace Check.Game.UI
                     float pulse = 0.75f + 0.25f * Mathf.Sin(t * 5f);
                     b.Ring.color = (p == 0 ? UIKit.Gold : UIKit.Cyan) * new Color(1, 1, 1, pulse);
                     b.Ring.rectTransform.localScale = Vector3.one * (1f + 0.06f * Mathf.Sin(t * 5f));
+                    // Liseré laiton qui bat autour de la plaque du joueur dont c'est le tour.
+                    b.Plate.color = Color.Lerp(UIKit.Copper, UIKit.Gold, 0.5f + 0.5f * Mathf.Sin(t * 5f)) * new Color(1, 1, 1, 0.75f + 0.25f * pulse);
                 }
+                else b.Plate.color = UIKit.Indigo * 2.2f * new Color(1, 1, 1, 0.55f);
                 b.Group.alpha = eliminated ? 0.45f : 1f;
                 if (eliminated || qualified)
                 {
@@ -613,16 +603,28 @@ namespace Check.Game.UI
                     bubble.sizeDelta = new Vector2(380, 76);
                     continue;
                 }
-                // Badge adverse : au-delà du bord extérieur de son éventail (projection), gardé dans l'écran.
-                if (!table.SeatScreenAnchors(p, out var centerSp, out var edgeSp)) continue;
-                RectTransformUtility.ScreenPointToLocalPointInRectangle(root, centerSp, null, out var centerLocal);
-                RectTransformUtility.ScreenPointToLocalPointInRectangle(root, edgeSp, null, out var local);
                 var size = b.Root.sizeDelta * b.Root.localScale.x;
-                var dir = local - centerLocal;
-                dir = dir.sqrMagnitude > 1f ? dir.normalized : Vector2.up;
-                local += dir * (Mathf.Abs(dir.x) * size.x * 0.5f + Mathf.Abs(dir.y) * size.y * 0.5f + 6f);
                 float halfW = canvasRect.width * 0.5f - size.x * 0.5f - 12f;
                 float halfH = canvasRect.height * 0.5f - size.y * 0.5f - 12f;
+                // Badge adverse : au-dessus de la tête de son personnage peint quand la plaque y tient
+                // (dans l'écran, sans toucher le bandeau d'état)…
+                Vector2 local;
+                if (table.TryGetHeadScreenPoint(p, out var headSp) &&
+                    RectTransformUtility.ScreenPointToLocalPointInRectangle(root, headSp, null, out var head) &&
+                    FitsAboveHead(head + new Vector2(0f, size.y * 0.5f + 6f), size, halfW, halfH))
+                {
+                    local = head + new Vector2(0f, size.y * 0.5f + 6f);
+                }
+                else
+                {
+                    // … sinon au-delà du bord extérieur de son éventail (projection), gardé dans l'écran.
+                    if (!table.SeatScreenAnchors(p, out var centerSp, out var edgeSp)) continue;
+                    RectTransformUtility.ScreenPointToLocalPointInRectangle(root, centerSp, null, out var centerLocal);
+                    RectTransformUtility.ScreenPointToLocalPointInRectangle(root, edgeSp, null, out local);
+                    var dir = local - centerLocal;
+                    dir = dir.sqrMagnitude > 1f ? dir.normalized : Vector2.up;
+                    local += dir * (Mathf.Abs(dir.x) * size.x * 0.5f + Mathf.Abs(dir.y) * size.y * 0.5f + 6f);
+                }
                 local.x = Mathf.Clamp(local.x, -halfW, halfW);
                 local.y = Mathf.Clamp(local.y, -halfH, halfH - 70f);
                 b.Root.anchorMin = b.Root.anchorMax = new Vector2(0.5f, 0.5f);
@@ -630,6 +632,16 @@ namespace Check.Game.UI
                 b.Root.anchoredPosition = local;
                 b.SetBubbleBelow(local.y > canvasRect.height * 0.12f);
             }
+        }
+
+        /// <summary>La plaque centrée en <paramref name="pos"/> tient dans l'écran, hors du bandeau d'état et du journal.</summary>
+        bool FitsAboveHead(Vector2 pos, Vector2 size, float halfW, float halfH)
+        {
+            if (Mathf.Abs(pos.x) > halfW || pos.y > halfH - 70f || pos.y < -halfH) return false;
+            float top = pos.y + size.y * 0.5f;
+            float bannerBottom = root.rect.height * 0.5f - 140f;
+            bool underBanner = Mathf.Abs(pos.x) < 530f + size.x * 0.5f && top > bannerBottom;
+            return !underBanner;
         }
 
         void RefreshPileIndicators()

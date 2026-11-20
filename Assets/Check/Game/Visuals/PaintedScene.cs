@@ -79,6 +79,16 @@ namespace Check.Game.Visuals
             return TryGetPortraitImage(seats[playerId].P.Index, out texture, out face);
         }
 
+        /// <summary>Point au-dessus de la tête (haut de l'image) du personnage de l'adversaire, en coordonnées monde.</summary>
+        public bool TryGetHeadPoint(int playerId, out Vector3 world)
+        {
+            world = Vector3.zero;
+            if (playerId <= 0 || playerId >= seats.Length || seats[playerId] == null) return false;
+            var f = seats[playerId];
+            world = f.T.position + Vector3.up * (f.T.localScale.y * 0.5f);
+            return true;
+        }
+
         sealed class Figure
         {
             public Transform T;
