@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -59,7 +60,7 @@ namespace Check.Game.Match
         public int PlayerCount => Match?.PlayerCount ?? Settings.PlayerCount;
 
         public string NameOf(int player) =>
-            player == HumanId ? "Toi" : player >= 0 && player < Names.Length ? Names[player] : "?";
+            player >= 0 && player < Names.Length ? Names[player] : player == HumanId ? PlayerIdentity.DefaultName : "?";
 
         // ---------------------------------------------------------------- Partie
 
@@ -73,8 +74,8 @@ namespace Check.Game.Match
             int n = Mathf.Clamp(Settings.PlayerCount, RuleSet.MinPlayers, RuleSet.MaxPlayers);
             Settings.PlayerCount = n;
             var names = new string[n];
-            names[0] = "Toi";
-            var picked = OpponentNames.Pick(n - 1, rng);
+            names[0] = PlayerIdentity.Sanitize(Settings.PlayerName);
+            var picked = OpponentNames.Pick(n - 1, rng, names[0]);
             for (int i = 1; i < n; i++) names[i] = picked[i - 1];
             int dealer = rng.Next(n);
             save = new SavedGame { Settings = Settings.Clone(), Names = names, Seed = seed, FirstDealer = dealer };
@@ -97,7 +98,7 @@ namespace Check.Game.Match
             roundEndRaised = false;
             reconciled = false;
             aiResult = null;
-            table.Setup(names.Length, Array.ConvertAll(names, OpponentNames.IsFemale));
+            table.Setup(names.Length, Array.ConvertAll(names, OpponentNames.IsFemale), Settings.PlayerPortrait);
             ApplySpeed();
         }
 
@@ -200,10 +201,32 @@ namespace Check.Game.Match
             return true;
         }
 
+        PlayerStats stats;
+        bool? recordStats;
+
+        /// <summary>Carnet du joueur (parties, victoires, compteurs), tenu à jour pendant les parties.</summary>
+        public PlayerStats Stats => stats ??= StatsStore.Load();
+
+        void RecordStats(IReadOnlyList<GameEvent> events, Round round)
+        {
+            // La recette automatique ne remplit pas le carnet.
+            recordStats ??= !Check.Game.App.AutoTest.Requested(out _);
+            if (!recordStats.Value || Turbo) return;
+            bool changed = false;
+            foreach (var e in events)
+            {
+                int player = e.Kind == GameEventKind.Eliminated || e.Kind == GameEventKind.MatchWon ? e.PlayerId
+                    : e.Seat >= 0 && e.Seat < round.SeatCount ? round.PlayerId(e.Seat) : -1;
+                changed |= Stats.Record(e, player == HumanId, (int)Settings.Level, Match.PlayerCount);
+            }
+            if (changed) StatsStore.Save(Stats);
+        }
+
         void Apply(TurnAction action)
         {
             var round = Match.Round;
             var events = Match.Apply(action);
+            RecordStats(events, round);
             reconciled = false;
             if (Match.IsOver) SavedGame.Clear();
             else if (save != null)

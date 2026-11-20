@@ -1,4 +1,5 @@
 using System;
+using Check.Core;
 using UnityEngine;
 
 namespace Check.Game.Audio
@@ -17,17 +18,33 @@ namespace Check.Game.Audio
     {
         const int Rate = 44100;
         const string MuteKey = "check.muted";
+        const string AmbienceKey = "check.ambience";
+        /// <summary>Niveaux de l'ambiance du wagon (coupée, douce, forte).</summary>
+        public static readonly float[] AmbienceLevels = { 0f, 0.35f, 0.7f };
 
         AudioClip[] clips;
         AudioSource[] voices;
         int nextVoice;
         readonly System.Random rng = new System.Random(7);
 
+        AudioSource ambience;
+        float tension, tensionTarget;
+
         public bool Muted
         {
             get => PlayerPrefs.GetInt(MuteKey, 0) == 1;
             set { PlayerPrefs.SetInt(MuteKey, value ? 1 : 0); PlayerPrefs.Save(); }
         }
+
+        /// <summary>Niveau de l'ambiance du wagon (index dans <see cref="AmbienceLevels"/>), réglé dans la pause.</summary>
+        public int AmbienceLevel
+        {
+            get => Mathf.Clamp(PlayerPrefs.GetInt(AmbienceKey, 1), 0, AmbienceLevels.Length - 1);
+            set { PlayerPrefs.SetInt(AmbienceKey, Mathf.Clamp(value, 0, AmbienceLevels.Length - 1)); PlayerPrefs.Save(); }
+        }
+
+        /// <summary>Tension de la partie (0 à 1, voir <see cref="RumbleSynth.Tension"/>) : la rame gronde un peu plus fort.</summary>
+        public void SetTension(float value) => tensionTarget = Mathf.Clamp01(value);
 
         void Awake()
         {
@@ -42,6 +59,30 @@ namespace Check.Game.Audio
             var values = (Sfx[])Enum.GetValues(typeof(Sfx));
             clips = new AudioClip[values.Length];
             foreach (var s in values) clips[(int)s] = Build(s);
+
+            // Roulement de la rame en boucle, discret, sous tout le reste.
+            const int ambienceRate = 22050;
+            var rumble = RumbleSynth.Render(ambienceRate);
+            var clip = AudioClip.Create("check_rumble", rumble.Length, 1, ambienceRate, false);
+            clip.SetData(rumble, 0);
+            ambience = gameObject.AddComponent<AudioSource>();
+            ambience.playOnAwake = false;
+            ambience.spatialBlend = 0f;
+            ambience.loop = true;
+            ambience.clip = clip;
+            ambience.volume = 0f;
+            ambience.Play();
+        }
+
+        void Update()
+        {
+            if (ambience == null) return;
+            float dt = Time.unscaledDeltaTime;
+            tension = Mathf.MoveTowards(tension, tensionTarget, dt * 0.5f);
+            float level = Muted ? 0f : AmbienceLevels[AmbienceLevel];
+            float target = level * (0.8f + 0.35f * tension);
+            ambience.volume = Mathf.MoveTowards(ambience.volume, target, dt * 0.6f);
+            ambience.pitch = 1f + 0.07f * tension;
         }
 
         public void Play(Sfx sfx, float volume = 1f)

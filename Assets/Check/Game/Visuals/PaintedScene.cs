@@ -42,6 +42,53 @@ namespace Check.Game.Visuals
             new Portrait(9, false, 1, 0.56f, 5.3f),  // jeune gars à la casquette
         };
 
+        /// <summary>Cadrage du visage dans chaque image (coordonnées UV, origine en bas à gauche), index = perso_N - 1.</summary>
+        static readonly Rect[] FaceUv =
+        {
+            new Rect(0.224f, 0.711f, 0.350f, 0.250f),
+            new Rect(0.206f, 0.711f, 0.598f, 0.250f),
+            new Rect(0.176f, 0.711f, 0.375f, 0.250f),
+            new Rect(0.125f, 0.711f, 0.412f, 0.250f),
+            new Rect(0.215f, 0.711f, 0.337f, 0.250f),
+            new Rect(0.101f, 0.711f, 0.373f, 0.250f),
+            new Rect(0.120f, 0.711f, 0.331f, 0.250f),
+            new Rect(0.197f, 0.711f, 0.360f, 0.250f),
+            new Rect(0.224f, 0.711f, 0.372f, 0.250f),
+        };
+
+        /// <summary>Nombre de portraits peints (perso_1 à perso_N).</summary>
+        public static int PortraitCount => FaceUv.Length;
+
+        /// <summary>Image du portrait n° <paramref name="index"/> (1 à <see cref="PortraitCount"/>) et cadrage de son visage.</summary>
+        public static bool TryGetPortraitImage(int index, out Texture2D texture, out Rect face)
+        {
+            texture = null;
+            face = new Rect(0f, 0f, 1f, 1f);
+            if (index < 1 || index > FaceUv.Length) return false;
+            texture = Load(index);
+            face = FaceUv[index - 1];
+            return texture != null;
+        }
+
+        /// <summary>Portrait assis à la place de l'adversaire <paramref name="playerId"/> (faux pour le joueur humain).</summary>
+        public bool TryGetPortrait(int playerId, out Texture2D texture, out Rect face)
+        {
+            texture = null;
+            face = new Rect(0f, 0f, 1f, 1f);
+            if (playerId <= 0 || playerId >= seats.Length || seats[playerId] == null) return false;
+            return TryGetPortraitImage(seats[playerId].P.Index, out texture, out face);
+        }
+
+        /// <summary>Point au-dessus de la tête (haut de l'image) du personnage de l'adversaire, en coordonnées monde.</summary>
+        public bool TryGetHeadPoint(int playerId, out Vector3 world)
+        {
+            world = Vector3.zero;
+            if (playerId <= 0 || playerId >= seats.Length || seats[playerId] == null) return false;
+            var f = seats[playerId];
+            world = f.T.position + Vector3.up * (f.T.localScale.y * 0.5f);
+            return true;
+        }
+
         sealed class Figure
         {
             public Transform T;
@@ -104,8 +151,11 @@ namespace Check.Game.Visuals
 
         // ------------------------------------------------------------------ places
 
-        /// <summary>Assied un personnage par adversaire, de son genre quand c'est possible, sans doublon.</summary>
-        public void SetPlayers(bool[] female)
+        /// <summary>
+        /// Assied un personnage par adversaire, de son genre quand c'est possible, sans doublon ; le portrait choisi
+        /// par le joueur (<paramref name="humanPortrait"/>, 0 = aucun) n'est pris qu'à défaut d'autre.
+        /// </summary>
+        public void SetPlayers(bool[] female, int humanPortrait = 0)
         {
             foreach (var f in seats) if (f != null) Destroy(f.T.gameObject);
             int n = female?.Length ?? 0;
@@ -116,6 +166,9 @@ namespace Check.Game.Visuals
             if (free.Count == 0) return;
             for (int i = free.Count - 1; i > 0; i--) { int k = rng.Next(i + 1); (free[i], free[k]) = (free[k], free[i]); }
             var all = new List<Portrait>(free);
+            // Le visage du joueur passe en dernier recours (tables pleines seulement).
+            int mine = free.FindIndex(p => p.Index == humanPortrait);
+            if (mine >= 0) { var p0 = free[mine]; free.RemoveAt(mine); free.Add(p0); }
 
             for (int id = 1; id < n; id++)
             {
@@ -130,7 +183,8 @@ namespace Check.Game.Visuals
                         var p = free[k];
                         bool genre = p.Female == female[id];
                         bool fits = (p.Facing == 0) == center;
-                        if ((pass == 0 && genre && fits) || (pass == 1 && genre) || pass == 2) pick = k;
+                        bool notMine = p.Index != humanPortrait;
+                        if ((pass == 0 && genre && fits && notMine) || (pass == 1 && genre && notMine) || pass == 2) pick = k;
                     }
                 seats[id] = Seat(free[pick], spot, id);
                 free.RemoveAt(pick);

@@ -33,6 +33,7 @@ namespace Check.Game.UI
         GameObject hudGroup;
         Text status, hint, roundInfo, logText, pileLabel;
         Button menuButton, speedButton;
+        Image speedTri1, speedTri2;
         public Button PlayButton { get; private set; }
         public Button CheckButton { get; private set; }
         /// <summary>Piocher / Prendre N cartes / Passer, selon la situation.</summary>
@@ -76,6 +77,9 @@ namespace Check.Game.UI
 
             BuildHud();
             BuildScreens();
+            BuildTips();
+            BuildCardHelp();
+            BuildNextArrow();
 
             human.UiBlocked = () => IsBlockingOverlayOpen;
             human.AskSuit = AskSuit;
@@ -96,7 +100,10 @@ namespace Check.Game.UI
             var hud = hudGroup.transform;
 
             menuButton = UIKit.Button("Menu", hud, "Menu", () => { sfx.Play(Sfx.Click); ShowPause(); }, UIKit.Gold, 34);
-            UIKit.Anchor((RectTransform)menuButton.transform, new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(24, -20), new Vector2(170, 84));
+            UIKit.Anchor((RectTransform)menuButton.transform, new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(24, -20), new Vector2(104, 84));
+            // Pictogramme « menu » : trois barres laiton.
+            var bars = UIKit.Pictogram(menuButton);
+            for (int i = -1; i <= 1; i++) UIKit.PictoPart(bars, UIKit.Rounded, new Vector2(0, i * 16), new Vector2(50, 8), UIKit.Gold);
 
             // Bandeau d'état.
             var banner = UIKit.Panel("StatusBanner", hud, UIKit.GlassStrong, true, UIKit.Gold);
@@ -123,14 +130,23 @@ namespace Check.Game.UI
                 game.SetSpeed(game.Settings.Speed == AiSpeed.Fast ? AiSpeed.Normal : AiSpeed.Fast);
                 SavePreferredSpeed();
             }, UIKit.Cyan, 28);
-            UIKit.Anchor((RectTransform)speedButton.transform, new Vector2(1f, 1f), new Vector2(1f, 1f), new Vector2(-24, -66), new Vector2(230, 70));
+            UIKit.Anchor((RectTransform)speedButton.transform, new Vector2(1f, 1f), new Vector2(1f, 1f), new Vector2(-24, -66), new Vector2(120, 70));
+            // Pictogramme « vitesse » : un triangle (normal) ou deux (rapide).
+            var speedIcon = UIKit.Pictogram(speedButton);
+            speedTri1 = UIKit.PictoPart(speedIcon, UIKit.Triangle, new Vector2(0, 0), new Vector2(42, 42), UIKit.Cyan);
+            speedTri2 = UIKit.PictoPart(speedIcon, UIKit.Triangle, new Vector2(16, 0), new Vector2(42, 42), UIKit.Cyan);
 
             // Journal des derniers coups.
             var logPanel = UIKit.Panel("Log", hud, new Color(0.03f, 0.03f, 0.08f, 0.85f), true, UIKit.Indigo * 2f);
             UIKit.Anchor(logPanel.rectTransform, new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(24, -120), new Vector2(420, 210));
-            logPanel.raycastTarget = false;
+            // Toucher le journal ouvre l'historique complet du tour.
+            var logButton = logPanel.gameObject.AddComponent<Button>();
+            logButton.targetGraphic = logPanel;
+            logButton.onClick.AddListener(() => { sfx.Play(Sfx.Click); ShowHistory(); });
             logText = UIKit.Label("Lines", logPanel.transform, "", 25, UIKit.TextDim, TextAnchor.UpperLeft);
-            UIKit.Stretch(logText.rectTransform, 18, 10, 14, 12);
+            UIKit.Stretch(logText.rectTransform, 18, 34, 14, 12);
+            var more = UIKit.Label("More", logPanel.transform, "Tout voir ›", 21, UIKit.Gold, TextAnchor.LowerRight, FontStyle.Bold);
+            UIKit.Stretch(more.rectTransform, 18, 6, 16, 6);
             logText.supportRichText = true;
             logText.horizontalOverflow = HorizontalWrapMode.Overflow;
             logText.verticalOverflow = VerticalWrapMode.Truncate;
@@ -204,8 +220,9 @@ namespace Check.Game.UI
         {
             public RectTransform Root;
             public CanvasGroup Group;
-            public Image Ring, Avatar, MarkPanel;
-            public Text Initial, Name, Count, Mark;
+            public Image Ring, MarkPanel, Plate;
+            public Text Name, Count, Mark;
+            public Medallion Face;
             public RectTransform Bubble;
             public Text BubbleText;
             public Image BubblePanel;
@@ -214,10 +231,14 @@ namespace Check.Game.UI
 
             public SeatBadge(Transform parent, bool human)
             {
+                // Adversaires : plaque étroite (visage, prénom, cartes) pour ne pas cacher le personnage peint.
+                float avatar = human ? 76f : 58f;
+                float left = human ? 100f : 78f;
                 var panel = UIKit.Panel(human ? "HumanBadge" : "Badge", parent, new Color(0.05f, 0.05f, 0.12f, 0.8f), true, UIKit.Indigo * 2.2f);
                 panel.raycastTarget = false;
                 Root = panel.rectTransform;
-                Root.sizeDelta = new Vector2(250, 96);
+                Root.sizeDelta = human ? new Vector2(250, 96) : new Vector2(224, 72);
+                Plate = Root.Find("Outline").GetComponent<Image>();
                 Group = Root.gameObject.AddComponent<CanvasGroup>();
                 Group.blocksRaycasts = false;
 
@@ -226,35 +247,20 @@ namespace Check.Game.UI
                 Ring.sprite = UIKit.Glow;
                 Ring.color = UIKit.Cyan;
                 Ring.raycastTarget = false;
-                UIKit.Anchor(Ring.rectTransform, new Vector2(0f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(50, 0), new Vector2(150, 150));
+                UIKit.Anchor(Ring.rectTransform, new Vector2(0f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(left * 0.5f, 0), new Vector2(avatar * 2f, avatar * 2f));
 
-                Avatar = new GameObject("Avatar", typeof(RectTransform)).AddComponent<Image>();
-                Avatar.transform.SetParent(Root, false);
-                Avatar.sprite = UIKit.Circle;
-                Avatar.color = UIKit.Indigo;
-                Avatar.raycastTarget = false;
-                UIKit.Anchor(Avatar.rectTransform, new Vector2(0f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(50, 0), new Vector2(76, 76));
-                var avatarRing = new GameObject("AvatarRing", typeof(RectTransform)).AddComponent<Image>();
-                avatarRing.transform.SetParent(Avatar.transform, false);
-                avatarRing.sprite = UIKit.RoundedOutline;
-                avatarRing.type = Image.Type.Sliced;
-                avatarRing.color = UIKit.Gold;
-                avatarRing.raycastTarget = false;
-                UIKit.Stretch(avatarRing.rectTransform, -3, -3, -3, -3);
-                avatarRing.pixelsPerUnitMultiplier = 0.55f;
-
-                Initial = UIKit.Label("Initial", Avatar.transform, "?", 38, UIKit.Gold, TextAnchor.MiddleCenter, FontStyle.Bold);
-                UIKit.Stretch(Initial.rectTransform);
+                Face = BuildMedallion(Root, avatar, UIKit.Gold);
+                UIKit.Anchor(Face.Root, new Vector2(0f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(left * 0.5f, 0), new Vector2(avatar, avatar));
 
                 Name = UIKit.Label("Name", Root, "", 28, UIKit.Text, TextAnchor.MiddleLeft, FontStyle.Bold);
-                UIKit.Stretch(Name.rectTransform, 100, 46, 10, 6);
+                UIKit.Stretch(Name.rectTransform, left, human ? 46 : 34, 10, 4);
                 Name.horizontalOverflow = HorizontalWrapMode.Overflow;
                 Name.resizeTextForBestFit = true;
                 Name.resizeTextMinSize = 16;
                 Name.resizeTextMaxSize = 28;
                 Name.horizontalOverflow = HorizontalWrapMode.Wrap;
-                Count = UIKit.Label("Count", Root, "", 24, UIKit.Cyan, TextAnchor.MiddleLeft, FontStyle.Bold);
-                UIKit.Stretch(Count.rectTransform, 100, 8, 10, 50);
+                Count = UIKit.Label("Count", Root, "", human ? 24 : 22, UIKit.Cyan, TextAnchor.MiddleLeft, FontStyle.Bold);
+                UIKit.Stretch(Count.rectTransform, left, 4, 10, human ? 50 : 38);
 
                 MarkPanel = UIKit.Panel("Mark", Root, new Color(0.05f, 0.2f, 0.12f, 0.95f), true, UIKit.Success);
                 // Badge du joueur (en bas de l'écran) : la marque passe au-dessus.
@@ -322,15 +328,13 @@ namespace Check.Game.UI
                 // Beaucoup de joueurs : badges plus compacts pour ne pas se chevaucher.
                 b.Root.localScale = Vector3.one * (n <= 5 ? 1f : n <= 7 ? 0.86f : 0.74f);
                 b.Name.text = game.NameOf(p);
-                b.Initial.text = Initial(game.NameOf(p));
-                b.Avatar.color = AvatarColor(p);
                 badges[p] = b;
             }
             badges[0] = humanBadge;
-            humanBadge.Name.text = "Toi";
-            humanBadge.Initial.text = "★";
-            humanBadge.Avatar.color = new Color(0.30f, 0.14f, 0.05f);
+            humanBadge.Name.text = game.NameOf(GameController.HumanId);
+            for (int p = 0; p < n; p++) SetMedallion(badges[p].Face, p);
             log.Clear();
+            history.Clear();
             logText.text = "";
             flashUntil = 0f;
             eventStatusUntil = 0f;
@@ -360,6 +364,7 @@ namespace Check.Game.UI
         {
             var e = ev.E;
             int p = ev.Player;
+            RecordHistory(ev);
             string who = p >= 0 ? game.NameOf(p) : "";
             bool me = p == GameController.HumanId;
             switch (e.Kind)
@@ -398,6 +403,7 @@ namespace Check.Game.UI
                     SetEventStatus($"Pénalité : {e.Count} cartes à piocher !", 1.4f);
                     break;
                 case GameEventKind.Skipped:
+                    NoteSkipped(p);
                     AddLog($"{who} : saute son tour");
                     Say(p, "Saute !", UIKit.Magenta, 1.4f);
                     SetEventStatus(me ? "Tu passes ton tour !" : $"{who} passe son tour !", 1.3f);
@@ -440,6 +446,8 @@ namespace Check.Game.UI
                     SetEventStatus(me ? "Tu gagnes la partie !" : $"{who} gagne la partie !", 5f);
                     break;
             }
+            var tip = FirstGameTips.ForEvent(e);
+            if (tip.HasValue) TryTip(tip.Value, false);
         }
 
         void Say(int player, string text, Color color, float seconds)
@@ -455,7 +463,7 @@ namespace Check.Game.UI
             logText.text = string.Join("\n", log);
             var panel = (RectTransform)logText.transform.parent;
             // Hauteur réelle du texte : la police système d'Android a des lignes plus hautes que celle du Mac.
-            panel.sizeDelta = new Vector2(panel.sizeDelta.x, 24f + Mathf.Max(31f * log.Count, logText.preferredHeight));
+            panel.sizeDelta = new Vector2(panel.sizeDelta.x, 48f + Mathf.Max(31f * log.Count, logText.preferredHeight));
         }
 
         void SetEventStatus(string text, float seconds)
@@ -487,23 +495,41 @@ namespace Check.Game.UI
         void Update()
         {
             UpdateLayout();
-            bool menuLike = homeOverlay.activeSelf || setupOverlay.activeSelf || pauseOverlay.activeSelf ||
+            bool menuLike = homeOverlay.activeSelf || setupOverlay.activeSelf || pauseOverlay.activeSelf || statsOverlay.activeSelf || historyOverlay.activeSelf ||
                             (rulesOverlay.activeSelf && !game.HasGame) || (rulesOverlay.activeSelf && rulesFromPause);
             game.Paused = menuLike;
+            AnimatePodium();
             Time.timeScale = menuLike ? 0f : game.Turbo ? 3f : 1f;
             human.Tick();
 
-            bool inGame = game.HasGame && !homeOverlay.activeSelf && !setupOverlay.activeSelf;
+            bool inGame = game.HasGame && !homeOverlay.activeSelf && !setupOverlay.activeSelf && !statsOverlay.activeSelf;
             hudGroup.SetActive(inGame);
             badgeLayer.gameObject.SetActive(inGame);
+            sfx.SetTension(inGame ? RumbleSynth.Tension(ActiveHandCounts()) : 0f);
             if (!inGame) return;
 
             RefreshStatus();
             RefreshBadges();
+            RefreshNextArrow();
             RefreshPileIndicators();
             RefreshActions();
+            RefreshTips();
+            RefreshCardHelp();
             roundInfo.text = game.Match != null ? $"Tour {game.Match.RoundNumber} · {game.Match.Alive.Count} en jeu" : "";
-            UIKit.SetButtonText(speedButton, game.Settings.Speed == AiSpeed.Fast ? "Vitesse ×2" : "Vitesse ×1");
+            bool fast = game.Settings.Speed == AiSpeed.Fast;
+            speedTri2.enabled = fast;
+            speedTri1.rectTransform.anchoredPosition = new Vector2(fast ? -16f : 0f, 0f);
+        }
+
+        /// <summary>Cartes en main des joueurs encore en course dans le tour affiché.</summary>
+        IEnumerable<int> ActiveHandCounts()
+        {
+            for (int p = 0; p < table.PlayerCount; p++)
+            {
+                bool outOfRound = (p < table.Eliminated.Length && table.Eliminated[p]) || (p < table.Qualified.Length && table.Qualified[p]);
+                int n = table.HandCount(p);
+                if (!outOfRound && n > 0) yield return n;
+            }
         }
 
         void RefreshStatus()
@@ -540,6 +566,10 @@ namespace Check.Game.UI
 
             status.text = text;
             status.color = color;
+            // Bandeau en police Art déco, sauf quand il montre un symbole de couleur (absent de cette police).
+            bool plain = UIKit.HasSuitSymbol(text);
+            status.font = plain ? UIKit.Font : UIKit.DisplayFont;
+            status.fontStyle = plain ? FontStyle.Bold : FontStyle.Normal;
             if (Time.unscaledTime < flashUntil)
             {
                 hint.text = flashText;
@@ -573,7 +603,10 @@ namespace Check.Game.UI
                     float pulse = 0.75f + 0.25f * Mathf.Sin(t * 5f);
                     b.Ring.color = (p == 0 ? UIKit.Gold : UIKit.Cyan) * new Color(1, 1, 1, pulse);
                     b.Ring.rectTransform.localScale = Vector3.one * (1f + 0.06f * Mathf.Sin(t * 5f));
+                    // Liseré laiton qui bat autour de la plaque du joueur dont c'est le tour.
+                    b.Plate.color = Color.Lerp(UIKit.Copper, UIKit.Gold, 0.5f + 0.5f * Mathf.Sin(t * 5f)) * new Color(1, 1, 1, 0.75f + 0.25f * pulse);
                 }
+                else b.Plate.color = UIKit.Indigo * 2.2f * new Color(1, 1, 1, 0.55f);
                 b.Group.alpha = eliminated ? 0.45f : 1f;
                 if (eliminated || qualified)
                 {
@@ -596,16 +629,28 @@ namespace Check.Game.UI
                     bubble.sizeDelta = new Vector2(380, 76);
                     continue;
                 }
-                // Badge adverse : au-delà du bord extérieur de son éventail (projection), gardé dans l'écran.
-                if (!table.SeatScreenAnchors(p, out var centerSp, out var edgeSp)) continue;
-                RectTransformUtility.ScreenPointToLocalPointInRectangle(root, centerSp, null, out var centerLocal);
-                RectTransformUtility.ScreenPointToLocalPointInRectangle(root, edgeSp, null, out var local);
                 var size = b.Root.sizeDelta * b.Root.localScale.x;
-                var dir = local - centerLocal;
-                dir = dir.sqrMagnitude > 1f ? dir.normalized : Vector2.up;
-                local += dir * (Mathf.Abs(dir.x) * size.x * 0.5f + Mathf.Abs(dir.y) * size.y * 0.5f + 6f);
                 float halfW = canvasRect.width * 0.5f - size.x * 0.5f - 12f;
                 float halfH = canvasRect.height * 0.5f - size.y * 0.5f - 12f;
+                // Badge adverse : au-dessus de la tête de son personnage peint quand la plaque y tient
+                // (dans l'écran, sans toucher le bandeau d'état)…
+                Vector2 local;
+                if (table.TryGetHeadScreenPoint(p, out var headSp) &&
+                    RectTransformUtility.ScreenPointToLocalPointInRectangle(root, headSp, null, out var head) &&
+                    FitsAboveHead(head + new Vector2(0f, size.y * 0.5f + 6f), size, halfW, halfH))
+                {
+                    local = head + new Vector2(0f, size.y * 0.5f + 6f);
+                }
+                else
+                {
+                    // … sinon au-delà du bord extérieur de son éventail (projection), gardé dans l'écran.
+                    if (!table.SeatScreenAnchors(p, out var centerSp, out var edgeSp)) continue;
+                    RectTransformUtility.ScreenPointToLocalPointInRectangle(root, centerSp, null, out var centerLocal);
+                    RectTransformUtility.ScreenPointToLocalPointInRectangle(root, edgeSp, null, out local);
+                    var dir = local - centerLocal;
+                    dir = dir.sqrMagnitude > 1f ? dir.normalized : Vector2.up;
+                    local += dir * (Mathf.Abs(dir.x) * size.x * 0.5f + Mathf.Abs(dir.y) * size.y * 0.5f + 6f);
+                }
                 local.x = Mathf.Clamp(local.x, -halfW, halfW);
                 local.y = Mathf.Clamp(local.y, -halfH, halfH - 70f);
                 b.Root.anchorMin = b.Root.anchorMax = new Vector2(0.5f, 0.5f);
@@ -613,6 +658,16 @@ namespace Check.Game.UI
                 b.Root.anchoredPosition = local;
                 b.SetBubbleBelow(local.y > canvasRect.height * 0.12f);
             }
+        }
+
+        /// <summary>La plaque centrée en <paramref name="pos"/> tient dans l'écran, hors du bandeau d'état et du journal.</summary>
+        bool FitsAboveHead(Vector2 pos, Vector2 size, float halfW, float halfH)
+        {
+            if (Mathf.Abs(pos.x) > halfW || pos.y > halfH - 70f || pos.y < -halfH) return false;
+            float top = pos.y + size.y * 0.5f;
+            float bannerBottom = root.rect.height * 0.5f - 140f;
+            bool underBanner = Mathf.Abs(pos.x) < 530f + size.x * 0.5f && top > bannerBottom;
+            return !underBanner;
         }
 
         void RefreshPileIndicators()

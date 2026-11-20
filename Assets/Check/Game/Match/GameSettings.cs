@@ -30,6 +30,12 @@ namespace Check.Game.Match
         /// <summary>Le joker de la couleur du 7 contre (et alourdit) un cumul de 7.</summary>
         public bool JokerCountersSeven = true;
         public bool Haptics = true;
+        /// <summary>Prénom du joueur (vide = « Toi »).</summary>
+        public string PlayerName = "";
+        /// <summary>Portrait peint choisi par le joueur (1 à 9 ; 0 = étoile, sans portrait).</summary>
+        public int PlayerPortrait;
+        /// <summary>Bulles d'apprentissage déjà vues (masque de <see cref="TipId"/>).</summary>
+        public int TipsSeen;
 
         public RuleSet ToRuleSet()
         {
@@ -96,9 +102,10 @@ namespace Check.Game.Match
         public static bool IsFemale(string name) => name != null && Female.Contains(name);
 
         /// <summary>Tire <paramref name="count"/> noms distincts.</summary>
-        public static string[] Pick(int count, System.Random rng)
+        public static string[] Pick(int count, System.Random rng, string exclude = null)
         {
             var pool = new List<string>(All);
+            if (exclude != null) pool.RemoveAll(n => string.Equals(n, exclude, StringComparison.OrdinalIgnoreCase));
             var result = new string[count];
             for (int i = 0; i < count; i++)
             {

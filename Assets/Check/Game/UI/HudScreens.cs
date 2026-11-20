@@ -18,11 +18,14 @@ namespace Check.Game.UI
         Action<Suit?> suitCallback;
         GameSettings pending;
 
-        Button resumeSavedButton, soundButton, hapticsButton, pauseSpeedButton, pauseSoundButton;
-        Button[] playerButtons, levelButtons, speedButtons;
+        Button resumeSavedButton, soundButton, hapticsButton, pauseSoundButton;
+        Button[] pauseSpeedButtons, jackButtons;
+        Button[] playerButtons, levelButtons, speedButtons, ambienceButtons;
         Text setupSummary;
         Button[] ruleButtons;
         Text roundTitle, roundBody;
+        Medallion roundLoserFace;
+        readonly Text[] suitCounts = new Text[4];
         GameObject roundNextRow, roundOutRow;
         Text matchTitle, matchBody;
         Coroutine autoNext;
@@ -46,7 +49,8 @@ namespace Check.Game.UI
 
         public bool IsBlockingOverlayOpen =>
             homeOverlay.activeSelf || setupOverlay.activeSelf || rulesOverlay.activeSelf || pauseOverlay.activeSelf ||
-            suitOverlay.activeSelf || roundOverlay.activeSelf || matchOverlay.activeSelf;
+            suitOverlay.activeSelf || roundOverlay.activeSelf || matchOverlay.activeSelf || statsOverlay.activeSelf ||
+            historyOverlay.activeSelf;
 
         void BuildScreens()
         {
@@ -59,6 +63,8 @@ namespace Check.Game.UI
             BuildSuitPicker();
             BuildRoundEnd();
             BuildMatchEnd();
+            BuildStats();
+            BuildHistory();
         }
 
         GameObject Overlay(string name, out RectTransform card, float width, float height, Color accent, float dim = 0.62f)
@@ -113,7 +119,7 @@ namespace Check.Game.UI
 
         static Text Title(RectTransform parent, string text, int size, Color color, float height)
         {
-            var t = UIKit.Label("Title", parent, text, size, color, TextAnchor.MiddleCenter, FontStyle.Bold);
+            var t = UIKit.Display(UIKit.Label("Title", parent, text, size, color, TextAnchor.MiddleCenter, FontStyle.Bold));
             UIKit.Size(t, height);
             return t;
         }
@@ -160,16 +166,18 @@ namespace Check.Game.UI
                 else { resumeSavedButton.gameObject.SetActive(false); Flash("Aucune partie à reprendre"); }
             }, UIKit.Cyan, 40);
             UIKit.Size(resumeSavedButton, 104);
-            UIKit.Size(UIKit.Button("Rules", card, "Règles", () => { sfx.Play(Sfx.Click); ShowRules(false); }, UIKit.Cyan, 40), 100);
+            var info = Row(card, 100);
+            UIKit.Button("Rules", info, "Règles", () => { sfx.Play(Sfx.Click); ShowRules(false); }, UIKit.Cyan, 40);
+            UIKit.Button("Stats", info, "Mon carnet", () => { sfx.Play(Sfx.Click); ShowStats(); }, UIKit.Cyan, 40);
 
             var row = Row(card, 96);
-            soundButton = UIKit.Button("Sound", row, "", () =>
+            soundButton = UIKit.Switch("Sound", row, "Son", () =>
             {
                 sfx.Muted = !sfx.Muted;
                 sfx.Play(Sfx.Click);
                 RefreshToggles();
-            }, UIKit.Cyan, 32);
-            hapticsButton = UIKit.Button("Haptics", row, "", () =>
+            }, 32);
+            hapticsButton = UIKit.Switch("Haptics", row, "Vibrations", () =>
             {
                 pending.Haptics = !pending.Haptics;
                 Haptics.Enabled = pending.Haptics;
@@ -177,7 +185,7 @@ namespace Check.Game.UI
                 sfx.Play(Sfx.Click);
                 Haptics.Light();
                 RefreshToggles();
-            }, UIKit.Cyan, 32);
+            }, 32);
 
             if (Application.platform != RuntimePlatform.IPhonePlayer)
                 UIKit.Size(UIKit.Button("Quit", card, "Quitter", () => { game.Persist(); Application.Quit(); }, UIKit.Magenta, 34), 84);
@@ -185,10 +193,11 @@ namespace Check.Game.UI
 
         void RefreshToggles()
         {
-            UIKit.SetButtonText(soundButton, sfx.Muted ? "Son : non" : "Son : oui");
-            UIKit.SetButtonText(hapticsButton, pending.Haptics ? "Vibrations : oui" : "Vibrations : non");
-            UIKit.SetButtonText(pauseSoundButton, sfx.Muted ? "Son : non" : "Son : oui");
-            UIKit.SetButtonText(pauseSpeedButton, game.Settings.Speed == AiSpeed.Fast ? "Adversaires : rapides" : "Adversaires : normaux");
+            UIKit.SetSwitch(soundButton, !sfx.Muted);
+            UIKit.SetSwitch(hapticsButton, pending.Haptics);
+            UIKit.SetSwitch(pauseSoundButton, !sfx.Muted);
+            for (int i = 0; i < pauseSpeedButtons.Length; i++) Mark(pauseSpeedButtons[i], (int)game.Settings.Speed == i, UIKit.Cyan);
+            for (int i = 0; i < ambienceButtons.Length; i++) Mark(ambienceButtons[i], sfx.AmbienceLevel == i, UIKit.Cyan);
         }
 
         public void ShowHome()
@@ -201,7 +210,7 @@ namespace Check.Game.UI
 
         void HideAll()
         {
-            foreach (var o in new[] { homeOverlay, setupOverlay, rulesOverlay, pauseOverlay, suitOverlay, roundOverlay, matchOverlay })
+            foreach (var o in new[] { homeOverlay, setupOverlay, rulesOverlay, pauseOverlay, suitOverlay, roundOverlay, matchOverlay, statsOverlay, historyOverlay })
                 o.SetActive(false);
             if (suitCallback != null) { var cb = suitCallback; suitCallback = null; cb(null); }
             if (autoNext != null) { StopCoroutine(autoNext); autoNext = null; }
@@ -216,9 +225,43 @@ namespace Check.Game.UI
 
         void BuildSetup()
         {
-            setupOverlay = Overlay("Setup", out var card, 1240, 940, UIKit.Cyan, 0.5f);
-            UIKit.VStack(card, 14, 44);
-            Title(card, "Nouvelle partie", 64, UIKit.Gold, 84);
+            setupOverlay = Overlay("Setup", out var card, 1240, 1040, UIKit.Cyan, 0.5f);
+            UIKit.VStack(card, 12, 40);
+            Title(card, "Nouvelle partie", 60, UIKit.Gold, 76);
+
+            // Le joueur à table : prénom et portrait peint (repris dans son badge, le journal et le classement).
+            UIKit.Size(UIKit.Label("YouLabel", card, "Ton prénom et ton portrait", 32, UIKit.TextDim), 42);
+            var you = Row(card, 96, 8);
+            you.GetComponent<HorizontalLayoutGroup>().childForceExpandWidth = false;
+            nameField = BuildNameField(you);
+            UIKit.Size(nameField, 84, 320);
+            portraitChoices = new Medallion[Visuals.PaintedScene.PortraitCount + 1];
+            for (int i = 0; i < portraitChoices.Length; i++)
+            {
+                int index = i;
+                var slot = UIKit.Rect("Portrait" + i, you);
+                UIKit.Size(slot.gameObject.AddComponent<LayoutElement>(), 80, 74);
+                var m = BuildMedallion(slot, 70, UIKit.Gold);
+                UIKit.Anchor(m.Root, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(70, 70));
+                m.Disc.raycastTarget = true;
+                var b = m.Disc.gameObject.AddComponent<Button>();
+                b.targetGraphic = m.Disc;
+                b.onClick.AddListener(() => { sfx.Play(Sfx.Click); pending.PlayerPortrait = index; RefreshSetup(); });
+                if (index == 0)
+                {
+                    m.Face.enabled = false;
+                    m.Initial.text = "★";
+                    m.Disc.color = new Color(0.30f, 0.14f, 0.05f);
+                }
+                else if (Visuals.PaintedScene.TryGetPortraitImage(index, out var tex, out var uv))
+                {
+                    m.Face.texture = tex;
+                    m.Face.uvRect = uv;
+                    m.Initial.enabled = false;
+                }
+                else m.Initial.text = index.ToString();
+                portraitChoices[i] = m;
+            }
 
             UIKit.Size(UIKit.Label("PlayersLabel", card, "Nombre de joueurs (toi compris)", 32, UIKit.TextDim), 46);
             var players = Row(card, 100, 10);
@@ -269,9 +312,38 @@ namespace Check.Game.UI
             UIKit.Size(SetupStartButton, -1, -1, 1.6f);
         }
 
+        InputField nameField;
+        Medallion[] portraitChoices;
+
+        InputField BuildNameField(Transform parent)
+        {
+            var bg = UIKit.Panel("Name", parent, new Color(0.03f, 0.03f, 0.08f, 0.9f), true, UIKit.Gold);
+            var field = bg.gameObject.AddComponent<InputField>();
+            field.targetGraphic = bg;
+            var text = UIKit.Label("Text", bg.transform, "", 34, UIKit.Text, TextAnchor.MiddleLeft, FontStyle.Bold);
+            UIKit.Stretch(text.rectTransform, 22, 6, 18, 6);
+            text.supportRichText = false;
+            text.horizontalOverflow = HorizontalWrapMode.Overflow;
+            var placeholder = UIKit.Label("Placeholder", bg.transform, PlayerIdentity.DefaultName, 34, UIKit.TextDim, TextAnchor.MiddleLeft, FontStyle.Italic);
+            UIKit.Stretch(placeholder.rectTransform, 22, 6, 18, 6);
+            field.textComponent = text;
+            field.placeholder = placeholder;
+            field.characterLimit = PlayerIdentity.MaxLength;
+            field.lineType = InputField.LineType.SingleLine;
+            field.onEndEdit.AddListener(value =>
+            {
+                string clean = PlayerIdentity.Sanitize(value);
+                pending.PlayerName = clean == PlayerIdentity.DefaultName ? "" : clean;
+                field.SetTextWithoutNotify(pending.PlayerName);
+            });
+            return field;
+        }
+
         void StartFromSetup()
         {
             sfx.Play(Sfx.Click);
+            string typed = PlayerIdentity.Sanitize(nameField.text);
+            pending.PlayerName = typed == PlayerIdentity.DefaultName ? "" : typed;
             pending.Save();
             HideAll();
             Time.timeScale = 1f;
@@ -291,41 +363,51 @@ namespace Check.Game.UI
             for (int i = 0; i < playerButtons.Length; i++) Mark(playerButtons[i], pending.PlayerCount == i + RuleSet.MinPlayers, UIKit.Cyan);
             for (int i = 0; i < levelButtons.Length; i++) Mark(levelButtons[i], (int)pending.Level == i, UIKit.Magenta);
             for (int i = 0; i < speedButtons.Length; i++) Mark(speedButtons[i], (int)pending.Speed == i, UIKit.Gold);
+            nameField.SetTextWithoutNotify(pending.PlayerName ?? "");
+            for (int i = 0; i < portraitChoices.Length; i++)
+            {
+                bool on = pending.PlayerPortrait == i;
+                portraitChoices[i].Ring.color = on ? UIKit.Gold : UIKit.Indigo * 2.2f;
+                portraitChoices[i].Root.localScale = Vector3.one * (on ? 1.12f : 0.92f);
+            }
             int n = pending.PlayerCount;
             setupSummary.text = $"Toi + {n - 1} adversaire{(n > 2 ? "s" : "")} · {RuleSet.Default.CardsToDeal(n)} cartes chacun au premier tour";
         }
 
         // ---------------------------------------------------------------- Règles
 
-        const string RulesText =
-            "<b><color=#FFCC5C>But</color></b>\nÊtre le premier à se débarrasser de toutes ses cartes. 54 cartes (52 + 2 jokers), de 2 à 10 joueurs ; " +
-            "7 cartes chacun à 2-3 joueurs, 6 à 4-5, 5 à 6-7, 4 à 8-10.\n\n" +
-            "<b><color=#FFCC5C>À ton tour</color></b>\nPose une carte de la <b>même couleur</b> (♠ ♣ <color=#FF5C73>♥ ♦</color>) ou de la <b>même valeur</b> que la carte du dessus. " +
-            "Tu peux poser d'un coup plusieurs cartes de même valeur (doubler, tripler) : la dernière posée devient le dessus. " +
-            "Sinon, pioche une carte : si elle est jouable tu peux la poser, sinon tu passes.\n\n" +
-            "<b><color=#FFCC5C>Cartes spéciales</color></b>\n" +
-            "<b>As</b> : le suivant passe son tour (deux As = deux joueurs sautés).\n" +
-            "<b>7</b> : le suivant pioche 2 cartes, sauf s'il contre avec un 7 (le cumul passe au suivant, +2 par 7).\n" +
-            "<b>Joker</b> : le suivant pioche 4 cartes. Le noir se pose sur du noir, le rouge sur du rouge ; il ne se contre pas.\n" +
-            "<b>Valet</b> : tu demandes une couleur ; le suivant doit la jouer (ou poser un Valet).\n" +
-            "<b>2</b> : passe-partout, se glisse sous le tas ; le dessus ne change pas. Il ne contre pas une pénalité.\n\n" +
-            "<b><color=#FFCC5C>« Check ! » et « Games ! »</color></b>\nQuand ta pose te laisse une seule carte, touche le bouton <b>Check !</b> avant de poser. " +
-            "Oublié ? Tu pioches des cartes de pénalité. Ta dernière carte posée : « Games ! », tu es qualifié.\n\n" +
-            "<b><color=#FFCC5C>Éliminations</color></b>\nLe dernier joueur à avoir encore des cartes est éliminé. On redistribue entre les autres, " +
-            "jusqu'à ce qu'il ne reste qu'un joueur : le vainqueur. À deux, le premier qui finit gagne.";
+        Text rulesText;
+        RectTransform rulesCards;
+        ScrollRect rulesScroll;
+        Button[] rulesTabs;
+        int rulesSheet;
 
         void BuildRules()
         {
             rulesOverlay = Overlay("Rules", out var card, 1380, 950, UIKit.Gold, 0.7f);
-            var title = UIKit.Label("Title", card, "Règles du Check", 56, UIKit.Gold, TextAnchor.MiddleCenter, FontStyle.Bold);
+            var title = UIKit.Display(UIKit.Label("Title", card, "Règles du Check", 56, UIKit.Gold, TextAnchor.MiddleCenter, FontStyle.Bold));
             UIKit.Anchor(title.rectTransform, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0, -24), new Vector2(900, 76));
 
-            // Texte défilant à gauche.
+            // Fiches à gauche : un onglet par fiche, puis la fiche (cartes réelles + texte), défilante si besoin.
+            var tabs = UIKit.Rect("Tabs", card);
+            tabs.anchorMin = new Vector2(0f, 1f);
+            tabs.anchorMax = new Vector2(0.6f, 1f);
+            tabs.pivot = new Vector2(0.5f, 1f);
+            tabs.offsetMin = new Vector2(44, -184);
+            tabs.offsetMax = new Vector2(-16, -110);
+            UIKit.HStack(tabs, 8);
+            rulesTabs = new Button[RulesSheets.All.Count];
+            for (int i = 0; i < rulesTabs.Length; i++)
+            {
+                int index = i;
+                rulesTabs[i] = UIKit.Button("Tab" + i, tabs, RulesSheets.All[i].Title, () => { sfx.Play(Sfx.Click); ShowRulesSheet(index); }, UIKit.Gold, 24);
+            }
+
             var scrollRt = UIKit.Rect("Scroll", card);
             scrollRt.anchorMin = new Vector2(0f, 0f);
             scrollRt.anchorMax = new Vector2(0.6f, 1f);
             scrollRt.offsetMin = new Vector2(44, 130);
-            scrollRt.offsetMax = new Vector2(-16, -110);
+            scrollRt.offsetMax = new Vector2(-16, -196);
             var bg = scrollRt.gameObject.AddComponent<Image>();
             bg.sprite = UIKit.Rounded;
             bg.type = Image.Type.Sliced;
@@ -341,19 +423,29 @@ namespace Check.Game.UI
             content.pivot = new Vector2(0.5f, 1f);
             content.offsetMin = new Vector2(24, 0);
             content.offsetMax = new Vector2(-24, 0);
-            var text = UIKit.Label("Text", content, RulesText, 28, UIKit.Text, TextAnchor.UpperLeft);
+            rulesCards = UIKit.Rect("Cards", content);
+            var cardsRow = UIKit.HStack(rulesCards, 14);
+            cardsRow.childAlignment = TextAnchor.MiddleLeft;
+            cardsRow.childForceExpandWidth = false;
+            UIKit.Size(rulesCards.gameObject.AddComponent<LayoutElement>(), 170);
+            foreach (var c in RulesSheets.All[2].Cards)
+                UIKit.Size(UIKit.MiniCard("Card", rulesCards, c), 170, 122);
+            var text = UIKit.Label("Text", content, "", 28, UIKit.Text, TextAnchor.UpperLeft);
             text.supportRichText = true;
             text.lineSpacing = 1.08f;
             UIKit.Stretch(text.rectTransform, 0, 0, 0, 20);
+            rulesText = text;
             var fitter = content.gameObject.AddComponent<ContentSizeFitter>();
             fitter.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
             var cv = content.gameObject.AddComponent<VerticalLayoutGroup>();
             cv.padding = new RectOffset(0, 0, 20, 24);
+            cv.spacing = 18;
             cv.childControlHeight = true;
             cv.childControlWidth = true;
             cv.childForceExpandHeight = false;
             scroll.content = content;
             scroll.viewport = scrollRt;
+            rulesScroll = scroll;
 
             // Réglages à droite.
             var side = UIKit.Rect("Settings", card);
@@ -364,13 +456,26 @@ namespace Check.Game.UI
             var sv = UIKit.VStack(side, 14);
             sv.childAlignment = TextAnchor.UpperCenter;
             UIKit.Size(UIKit.Label("SettingsTitle", side, "Règles réglables", 34, UIKit.Cyan, TextAnchor.MiddleCenter, FontStyle.Bold), 50);
-            ruleButtons = new Button[3];
-            ruleButtons[0] = UIKit.Button("ForgotCheck", side, "", () => { pending.ForgotCheckPenalty = !pending.ForgotCheckPenalty; OnRuleChanged(); }, UIKit.Magenta, 28);
-            ruleButtons[1] = UIKit.Button("JackWild", side, "", () => { pending.JackIsWild = !pending.JackIsWild; OnRuleChanged(); }, UIKit.Magenta, 28);
-            ruleButtons[2] = UIKit.Button("JokerSeven", side, "", () => { pending.JokerCountersSeven = !pending.JokerCountersSeven; OnRuleChanged(); }, UIKit.Magenta, 28);
-            foreach (var b in ruleButtons) UIKit.Size(b, 118);
+            ruleButtons = new Button[2];
+            ruleButtons[0] = UIKit.Switch("ForgotCheck", side, "Check oublié : 2 cartes de pénalité", () => { pending.ForgotCheckPenalty = !pending.ForgotCheckPenalty; OnRuleChanged(); }, 28);
+            UIKit.Size(ruleButtons[0], 104);
+            UIKit.Size(UIKit.Label("JackLabel", side, "Le Valet se pose", 26, UIKit.TextDim, TextAnchor.MiddleCenter, FontStyle.Bold), 34);
+            var jackRow = UIKit.Rect("JackRow", side);
+            UIKit.HStack(jackRow, 10);
+            UIKit.Size(jackRow.gameObject.AddComponent<LayoutElement>(), 86);
+            jackButtons = new Button[2];
+            jackButtons[0] = UIKit.Button("JackWild", jackRow, "sur tout", () => { pending.JackIsWild = true; OnRuleChanged(); }, UIKit.Magenta, 28);
+            jackButtons[1] = UIKit.Button("JackStrict", jackRow, "couleur ou valeur", () => { pending.JackIsWild = false; OnRuleChanged(); }, UIKit.Magenta, 28);
+            ruleButtons[1] = UIKit.Switch("JokerSeven", side, "Le joker contre le 7", () => { pending.JokerCountersSeven = !pending.JokerCountersSeven; OnRuleChanged(); }, 28);
+            UIKit.Size(ruleButtons[1], 104);
             var note = UIKit.Label("Note", side, "Les changements s'appliquent à la prochaine partie.", 24, UIKit.TextDim);
             UIKit.Size(note, 70);
+            UIKit.Size(UIKit.Button("Tips", side, "Revoir les astuces de la première partie", () =>
+            {
+                sfx.Play(Sfx.Click);
+                ResetTips();
+                Flash("Les astuces reviendront pendant la partie");
+            }, UIKit.Cyan, 26), 84);
 
             var close = UIKit.Button("Close", card, "Fermer", () =>
             {
@@ -390,12 +495,29 @@ namespace Check.Game.UI
 
         void RefreshRules()
         {
-            UIKit.SetButtonText(ruleButtons[0], "Check oublié : " + (pending.ForgotCheckPenalty ? "2 cartes de pénalité" : "pas de pénalité"));
-            UIKit.SetButtonText(ruleButtons[1], "Valet : " + (pending.JackIsWild ? "se pose sur tout" : "couleur ou valeur"));
-            UIKit.SetButtonText(ruleButtons[2], "Joker contre le 7 : " + (pending.JokerCountersSeven ? "oui" : "non"));
-            Mark(ruleButtons[0], pending.ForgotCheckPenalty, UIKit.Magenta);
-            Mark(ruleButtons[1], pending.JackIsWild, UIKit.Magenta);
-            Mark(ruleButtons[2], pending.JokerCountersSeven, UIKit.Magenta);
+            UIKit.SetSwitch(ruleButtons[0], pending.ForgotCheckPenalty);
+            UIKit.SetSwitch(ruleButtons[1], pending.JokerCountersSeven);
+            Mark(jackButtons[0], pending.JackIsWild, UIKit.Magenta);
+            Mark(jackButtons[1], !pending.JackIsWild, UIKit.Magenta);
+        }
+
+        void ShowRulesSheet(int index)
+        {
+            rulesSheet = Mathf.Clamp(index, 0, RulesSheets.All.Count - 1);
+            var sheet = RulesSheets.All[rulesSheet];
+            rulesText.text = sheet.Body;
+            int k = 0;
+            foreach (Transform child in rulesCards)
+            {
+                var img = child.GetComponent<RawImage>();
+                bool on = k < sheet.Cards.Count;
+                child.gameObject.SetActive(on);
+                if (on && img != null) UIKit.SetMiniCard(img, sheet.Cards[k]);
+                k++;
+            }
+            rulesCards.gameObject.SetActive(sheet.Cards.Count > 0);
+            for (int i = 0; i < rulesTabs.Length; i++) Mark(rulesTabs[i], i == rulesSheet, UIKit.Gold);
+            rulesScroll.verticalNormalizedPosition = 1f;
         }
 
         public void ShowRules(bool fromPause)
@@ -403,6 +525,7 @@ namespace Check.Game.UI
             rulesFromPause = fromPause;
             pending = GameSettings.Load();
             RefreshRules();
+            ShowRulesSheet(rulesSheet);
             if (fromPause) Show(pauseOverlay, false);
             Show(rulesOverlay, true);
         }
@@ -411,22 +534,40 @@ namespace Check.Game.UI
 
         void BuildPause()
         {
-            pauseOverlay = Overlay("Pause", out var card, 760, 940, UIKit.Cyan);
-            UIKit.VStack(card, 16, 44);
+            pauseOverlay = Overlay("Pause", out var card, 760, 1010, UIKit.Cyan);
+            UIKit.VStack(card, 14, 40);
             Title(card, "Pause", 70, UIKit.Gold, 96);
             UIKit.Size(UIKit.Button("Resume", card, "Reprendre", () => { sfx.Play(Sfx.Click); Show(pauseOverlay, false); }, UIKit.Gold, 46), 112);
             UIKit.Size(UIKit.Button("New", card, "Nouvelle partie", () => { sfx.Play(Sfx.Click); ShowSetup(); }, UIKit.Cyan, 38), 98);
             UIKit.Size(UIKit.Button("Rules", card, "Règles", () => { sfx.Play(Sfx.Click); ShowRules(true); }, UIKit.Cyan, 38), 98);
-            pauseSpeedButton = UIKit.Button("Speed", card, "", () =>
+            // Rythme des adversaires : deux segments.
+            var speedRow = Row(card, 86, 10);
+            UIKit.Size(UIKit.Label("SpeedLabel", speedRow, "Adversaires", 28, UIKit.TextDim, TextAnchor.MiddleCenter, FontStyle.Bold), -1, 170, 0f);
+            pauseSpeedButtons = new Button[2];
+            string[] speedNames = { "normaux", "rapides" };
+            for (int i = 0; i < 2; i++)
             {
-                sfx.Play(Sfx.Click);
-                game.SetSpeed(game.Settings.Speed == AiSpeed.Fast ? AiSpeed.Normal : AiSpeed.Fast);
-                SavePreferredSpeed();
-                RefreshToggles();
-            }, UIKit.Cyan, 34);
-            UIKit.Size(pauseSpeedButton, 92);
-            pauseSoundButton = UIKit.Button("Sound", card, "", () => { sfx.Muted = !sfx.Muted; sfx.Play(Sfx.Click); RefreshToggles(); }, UIKit.Cyan, 34);
+                var speed = (AiSpeed)i;
+                pauseSpeedButtons[i] = UIKit.Button("Speed" + i, speedRow, speedNames[i], () =>
+                {
+                    sfx.Play(Sfx.Click);
+                    game.SetSpeed(speed);
+                    SavePreferredSpeed();
+                    RefreshToggles();
+                }, UIKit.Cyan, 30);
+            }
+            pauseSoundButton = UIKit.Switch("Sound", card, "Son", () => { sfx.Muted = !sfx.Muted; sfx.Play(Sfx.Click); RefreshToggles(); }, 34);
             UIKit.Size(pauseSoundButton, 92);
+            // Volume de l'ambiance du wagon (roulement de la rame).
+            var amb = Row(card, 76, 10);
+            UIKit.Size(UIKit.Label("AmbienceLabel", amb, "Rame", 28, UIKit.TextDim, TextAnchor.MiddleCenter, FontStyle.Bold), -1, 110, 0f);
+            string[] ambNames = { "coupée", "douce", "forte" };
+            ambienceButtons = new Button[ambNames.Length];
+            for (int i = 0; i < ambNames.Length; i++)
+            {
+                int level = i;
+                ambienceButtons[i] = UIKit.Button("Ambience" + i, amb, ambNames[i], () => { sfx.AmbienceLevel = level; sfx.Play(Sfx.Click); RefreshToggles(); }, UIKit.Cyan, 28);
+            }
             UIKit.Size(UIKit.Button("Quit", card, "Quitter la partie", () =>
             {
                 sfx.Play(Sfx.Click);
@@ -448,6 +589,8 @@ namespace Check.Game.UI
         void BuildSuitPicker()
         {
             suitOverlay = Overlay("SuitPicker", out var card, 1200, 600, UIKit.Gold, 0.5f);
+            // Fenêtre remontée : la main du joueur, en bas, reste visible.
+            card.anchoredPosition = new Vector2(0, 150);
             UIKit.VStack(card, 20, 40);
             Title(card, "Valet : quelle couleur demandes-tu ?", 50, UIKit.Gold, 74);
             var row = Row(card, 280, 24);
@@ -464,9 +607,12 @@ namespace Check.Game.UI
                 label.fontSize = 170;
                 label.resizeTextMaxSize = 170;
                 label.color = red ? UIKit.SuitRed : UIKit.Text;
-                UIKit.Stretch(label.rectTransform, 6, 50, 6, 4);
+                UIKit.Stretch(label.rectTransform, 6, 84, 6, 4);
                 var caption = UIKit.Label("Caption", b.transform, names[i], 30, UIKit.TextDim, TextAnchor.MiddleCenter, FontStyle.Bold);
-                UIKit.Stretch(caption.rectTransform, 6, 10, 6, 220);
+                UIKit.Stretch(caption.rectTransform, 6, 46, 6, 196);
+                // Cartes de cette couleur qu'il restera en main après la pose.
+                suitCounts[(int)suit] = UIKit.Label("Count", b.transform, "", 26, UIKit.TextDim, TextAnchor.MiddleCenter);
+                UIKit.Stretch(suitCounts[(int)suit].rectTransform, 6, 10, 6, 236);
                 SuitButtons[(int)suit] = b;
             }
             UIKit.Size(UIKit.Button("Cancel", card, "Annuler", () => PickSuit(null), UIKit.TextDim, 34), 90);
@@ -476,6 +622,20 @@ namespace Check.Game.UI
         {
             if (suitCallback != null) { var old = suitCallback; suitCallback = null; old(null); }
             suitCallback = callback;
+            var counts = SuitAdvice.Counts(game.HumanSeat >= 0 ? game.Round.Hand(game.HumanSeat) : null, human.Selection);
+            var best = SuitAdvice.Best(counts);
+            for (int s = 0; s < 4; s++)
+            {
+                int n = counts[s];
+                bool top = best.HasValue && (int)best.Value == s;
+                suitCounts[s].text = n == 0 ? "aucune en main" : n == 1 ? "1 carte en main" : $"{n} cartes en main";
+                suitCounts[s].color = top ? UIKit.Gold : UIKit.TextDim;
+                suitCounts[s].fontStyle = top ? FontStyle.Bold : FontStyle.Normal;
+                SuitButtons[s].GetComponent<Image>().color = top
+                    ? Color.Lerp(new Color(0.08f, 0.10f, 0.20f, 0.95f), UIKit.Gold, 0.35f)
+                    : new Color(0.08f, 0.10f, 0.20f, 0.85f);
+                SuitButtons[s].transform.localScale = Vector3.one * (top ? 1.06f : 1f);
+            }
             Show(suitOverlay, true);
         }
 
@@ -492,12 +652,17 @@ namespace Check.Game.UI
 
         void BuildRoundEnd()
         {
-            roundOverlay = Overlay("RoundEnd", out var card, 1100, 720, UIKit.Magenta, 0.45f);
-            UIKit.VStack(card, 18, 46);
-            roundTitle = Title(card, "", 66, UIKit.Gold, 90);
+            roundOverlay = Overlay("RoundEnd", out var card, 1100, 820, UIKit.Magenta, 0.45f);
+            UIKit.VStack(card, 16, 42);
+            roundTitle = Title(card, "", 66, UIKit.Gold, 86);
+            // Portrait du perdant du tour.
+            var faceRow = UIKit.Rect("Loser", card);
+            UIKit.Size(faceRow.gameObject.AddComponent<LayoutElement>(), 140);
+            roundLoserFace = BuildMedallion(faceRow, 132, UIKit.Danger);
+            UIKit.Anchor(roundLoserFace.Root, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(132, 132));
             roundBody = UIKit.Label("Body", card, "", 32, UIKit.Text);
             roundBody.supportRichText = true;
-            UIKit.Size(roundBody, 300);
+            UIKit.Size(roundBody, 260);
 
             var next = Row(card, 120);
             roundNextRow = next.gameObject;
@@ -534,10 +699,12 @@ namespace Check.Game.UI
             string extra = humanJustEliminated ? "\nTu peux regarder la fin de la partie en accéléré." :
                 game.HumanAlive ? $"\nTour {m.RoundNumber + 1} : {m.Rules.CardsToDeal(alive.Count)} cartes chacun." : "";
             roundBody.text = lostLine + "\n\n" + aliveLine + extra;
+            SetMedallion(roundLoserFace, loser);
+            roundLoserFace.Face.color = new Color(0.75f, 0.75f, 0.8f); // visage un peu éteint, comme son personnage
             roundNextRow.SetActive(!humanJustEliminated);
             roundOutRow.SetActive(humanJustEliminated);
             if (humanJustEliminated) sfx.Play(Sfx.Defeat, 0.7f);
-            StartCoroutine(ShowDelayed(roundOverlay, 0.35f));
+            StartCoroutine(ShowDelayed(roundOverlay, 0.5f));
             // L'humain regarde la fin : on enchaîne tout seul.
             if (!humanJustEliminated && !game.HumanAlive) autoNext = StartCoroutine(AutoNextRound());
         }
@@ -561,18 +728,68 @@ namespace Check.Game.UI
 
         // ---------------------------------------------------------------- Fin de partie
 
+        sealed class PodiumStep
+        {
+            public RectTransform Root;
+            public Medallion Face;
+            public Image Glow;
+            public Text Name;
+        }
+
+        PodiumStep[] podium;
+        Text matchRest;
+        float podiumShownAt = -1f;
+
         void BuildMatchEnd()
         {
-            matchOverlay = Overlay("MatchEnd", out var card, 1100, 760, UIKit.Gold, 0.5f);
-            UIKit.VStack(card, 18, 46);
-            matchTitle = Title(card, "", 96, UIKit.Gold, 124);
+            matchOverlay = Overlay("MatchEnd", out var card, 1200, 900, UIKit.Gold, 0.5f);
+            UIKit.VStack(card, 12, 40);
+            matchTitle = Title(card, "", 90, UIKit.Gold, 110);
             var o = matchTitle.gameObject.AddComponent<Outline>();
             o.effectColor = UIKit.Magenta * new Color(1, 1, 1, 0.6f);
             o.effectDistance = new Vector2(4, -4);
-            matchBody = UIKit.Label("Body", card, "", 32, UIKit.Text);
+            matchBody = UIKit.Label("Body", card, "", 30, UIKit.Text);
             matchBody.supportRichText = true;
-            UIKit.Size(matchBody, 330);
-            var row = Row(card, 120);
+            UIKit.Size(matchBody, 84);
+
+            // Podium : 2e à gauche, 1er au centre (plus haut), 3e à droite ; portraits peints sur les marches.
+            var stage = UIKit.Rect("Podium", card);
+            UIKit.Size(stage.gameObject.AddComponent<LayoutElement>(), 400);
+            podium = new PodiumStep[3];
+            float[] heights = { 110f, 160f, 74f };
+            float[] xs = { -300f, 0f, 300f };
+            string[] ranks = { "2", "1", "3" };
+            for (int i = 0; i < 3; i++)
+            {
+                var step = new PodiumStep();
+                step.Root = UIKit.Rect("Step" + ranks[i], stage);
+                UIKit.Anchor(step.Root, new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(xs[i], 0f), new Vector2(270f, 400f));
+                var block = UIKit.Panel("Block", step.Root, new Color(0.10f, 0.08f, 0.05f, 0.95f), true, i == 1 ? UIKit.Gold : UIKit.Copper);
+                UIKit.Anchor(block.rectTransform, new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), Vector2.zero, new Vector2(250f, heights[i]));
+                var num = UIKit.Label("Rank", block.transform, ranks[i], i == 1 ? 72 : 56, i == 1 ? UIKit.Gold : UIKit.Copper, TextAnchor.MiddleCenter, FontStyle.Bold);
+                UIKit.Stretch(num.rectTransform);
+                float faceSize = i == 1 ? 170f : 130f;
+                step.Glow = new GameObject("Glow", typeof(RectTransform)).AddComponent<Image>();
+                step.Glow.transform.SetParent(step.Root, false);
+                step.Glow.sprite = UIKit.Glow;
+                step.Glow.color = UIKit.Gold;
+                step.Glow.raycastTarget = false;
+                UIKit.Anchor(step.Glow.rectTransform, new Vector2(0.5f, 0f), new Vector2(0.5f, 0.5f), new Vector2(0f, heights[i] + 56f + faceSize * 0.5f), new Vector2(faceSize * 2.1f, faceSize * 2.1f));
+                step.Glow.gameObject.SetActive(i == 1);
+                step.Face = BuildMedallion(step.Root, faceSize, i == 1 ? UIKit.Gold : UIKit.Copper);
+                UIKit.Anchor(step.Face.Root, new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0f, heights[i] + 56f), new Vector2(faceSize, faceSize));
+                step.Name = UIKit.Label("Name", step.Root, "", i == 1 ? 34 : 28, i == 1 ? UIKit.Gold : UIKit.Text, TextAnchor.MiddleCenter, FontStyle.Bold);
+                UIKit.Anchor(step.Name.rectTransform, new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0f, heights[i] + 8f), new Vector2(270f, 44f));
+                step.Name.resizeTextForBestFit = true;
+                step.Name.resizeTextMinSize = 18;
+                step.Name.resizeTextMaxSize = i == 1 ? 34 : 28;
+                podium[i] = step;
+            }
+
+            matchRest = UIKit.Label("Rest", card, "", 26, UIKit.TextDim);
+            matchRest.supportRichText = true;
+            UIKit.Size(matchRest, 70);
+            var row = Row(card, 110);
             MatchReplayButton = UIKit.Button("Replay", row, "Rejouer", () => { sfx.Play(Sfx.Click); Replay(); }, UIKit.Gold, 46);
             MatchMenuButton = UIKit.Button("Menu", row, "Menu", () => { sfx.Play(Sfx.Click); game.Abandon(); ShowHome(); }, UIKit.Magenta, 40);
         }
@@ -584,16 +801,49 @@ namespace Check.Game.UI
             bool won = winner == GameController.HumanId;
             matchTitle.text = won ? "VICTOIRE !" : "Partie finie";
             matchTitle.color = won ? UIKit.Gold : UIKit.Cyan;
-            var ranking = new System.Text.StringBuilder();
-            ranking.Append($"1. <color=#FFCC5C><b>{game.NameOf(winner)}</b></color>");
-            for (int i = m.Eliminated.Count - 1, rank = 2; i >= 0 && rank <= 10; i--, rank++)
-                ranking.Append($"   {rank}. {game.NameOf(m.Eliminated[i])}");
             string head = won ? "Tu remportes la partie de Check !" : $"<b>{game.NameOf(winner)}</b> gagne la partie.";
-            matchBody.text = head + $"\n{m.RoundNumber} tour{(m.RoundNumber > 1 ? "s" : "")} joué{(m.RoundNumber > 1 ? "s" : "")}\n\n<size=26>{ranking}</size>";
+            matchBody.text = head + $"\n<size=26>{m.RoundNumber} tour{(m.RoundNumber > 1 ? "s" : "")} joué{(m.RoundNumber > 1 ? "s" : "")}</size>";
+
+            var order = Standings.Of(m);
+            for (int i = 0; i < podium.Length; i++) podium[i].Root.gameObject.SetActive(false);
+            for (int rank = 1; rank <= Mathf.Min(3, order.Count); rank++)
+            {
+                var step = podium[Standings.PodiumSlot(rank)];
+                step.Root.gameObject.SetActive(true);
+                step.Name.text = game.NameOf(order[rank - 1]);
+                SetMedallion(step.Face, order[rank - 1]);
+            }
+            var rest = new System.Text.StringBuilder();
+            for (int rank = 4; rank <= order.Count; rank++)
+                rest.Append(rank > 4 ? "   " : "").Append($"{rank}. {game.NameOf(order[rank - 1])}");
+            matchRest.text = rest.ToString();
+            matchRest.gameObject.SetActive(order.Count > 3);
+
+            table.Celebrate(winner);
             sfx.Play(won ? Sfx.Victory : Sfx.Defeat);
             if (won) Haptics.Medium();
             Show(roundOverlay, false);
             StartCoroutine(ShowDelayed(matchOverlay, 0.6f));
+            podiumShownAt = Time.unscaledTime + 0.6f;
+        }
+
+        /// <summary>Le vainqueur est éclairé : halo doré qui respire, portrait qui monte sur sa marche.</summary>
+        void AnimatePodium()
+        {
+            if (podium == null || !matchOverlay.activeSelf) return;
+            float t = Time.unscaledTime - podiumShownAt;
+            var win = podium[1];
+            float pulse = 0.65f + 0.35f * Mathf.Sin(t * 3.2f);
+            win.Glow.color = UIKit.Gold * new Color(1, 1, 1, 0.55f * pulse);
+            win.Glow.rectTransform.localScale = Vector3.one * (1f + 0.08f * Mathf.Sin(t * 3.2f));
+            for (int i = 0; i < podium.Length; i++)
+            {
+                // Entrée échelonnée : 3e, puis 2e, puis 1er.
+                float delay = i == 2 ? 0f : i == 0 ? 0.15f : 0.3f;
+                float e = Mathf.Clamp01((t - delay) / 0.35f);
+                e = 1f - (1f - e) * (1f - e);
+                podium[i].Face.Root.localScale = Vector3.one * Mathf.Lerp(0.4f, 1f, e);
+            }
         }
 
         void Replay()
@@ -621,6 +871,8 @@ namespace Check.Game.UI
                 if (game.HasGame && !game.Match.IsOver) ShowPause(); else ShowHome();
                 return;
             }
+            if (statsOverlay.activeSelf) { ShowHome(); return; }
+            if (historyOverlay.activeSelf) { Show(historyOverlay, false); return; }
             if (pauseOverlay.activeSelf) { Show(pauseOverlay, false); return; }
             if (homeOverlay.activeSelf)
             {
