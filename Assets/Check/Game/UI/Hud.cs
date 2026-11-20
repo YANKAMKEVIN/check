@@ -493,6 +493,7 @@ namespace Check.Game.UI
             bool menuLike = homeOverlay.activeSelf || setupOverlay.activeSelf || pauseOverlay.activeSelf ||
                             (rulesOverlay.activeSelf && !game.HasGame) || (rulesOverlay.activeSelf && rulesFromPause);
             game.Paused = menuLike;
+            AnimatePodium();
             Time.timeScale = menuLike ? 0f : game.Turbo ? 3f : 1f;
             human.Tick();
 

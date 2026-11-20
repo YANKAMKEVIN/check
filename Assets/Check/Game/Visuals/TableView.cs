@@ -78,6 +78,14 @@ namespace Check.Game.Visuals
         /// <summary>Nouvelle partie : un personnage assis par adversaire (index 0 = joueur humain, ignoré).</summary>
         public void SetPlayers(bool[] female) { if (painted != null) painted.SetPlayers(female); }
 
+        /// <summary>Portrait peint de l'adversaire (visage cadré) ; faux sans décor peint ou pour le joueur humain.</summary>
+        public bool TryGetPortrait(int playerId, out Texture2D texture, out Rect face)
+        {
+            texture = null;
+            face = new Rect(0f, 0f, 1f, 1f);
+            return painted != null && painted.TryGetPortrait(playerId, out texture, out face);
+        }
+
         /// <summary>Le personnage dont c'est le tour se redresse ; -1 : personne.</summary>
         public void SetActivePlayer(int playerId) { if (painted != null) painted.SetActive(playerId); }
 

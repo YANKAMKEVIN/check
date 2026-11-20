@@ -600,18 +600,68 @@ namespace Check.Game.UI
 
         // ---------------------------------------------------------------- Fin de partie
 
+        sealed class PodiumStep
+        {
+            public RectTransform Root;
+            public Medallion Face;
+            public Image Glow;
+            public Text Name;
+        }
+
+        PodiumStep[] podium;
+        Text matchRest;
+        float podiumShownAt = -1f;
+
         void BuildMatchEnd()
         {
-            matchOverlay = Overlay("MatchEnd", out var card, 1100, 760, UIKit.Gold, 0.5f);
-            UIKit.VStack(card, 18, 46);
-            matchTitle = Title(card, "", 96, UIKit.Gold, 124);
+            matchOverlay = Overlay("MatchEnd", out var card, 1200, 900, UIKit.Gold, 0.5f);
+            UIKit.VStack(card, 12, 40);
+            matchTitle = Title(card, "", 90, UIKit.Gold, 110);
             var o = matchTitle.gameObject.AddComponent<Outline>();
             o.effectColor = UIKit.Magenta * new Color(1, 1, 1, 0.6f);
             o.effectDistance = new Vector2(4, -4);
-            matchBody = UIKit.Label("Body", card, "", 32, UIKit.Text);
+            matchBody = UIKit.Label("Body", card, "", 30, UIKit.Text);
             matchBody.supportRichText = true;
-            UIKit.Size(matchBody, 330);
-            var row = Row(card, 120);
+            UIKit.Size(matchBody, 84);
+
+            // Podium : 2e à gauche, 1er au centre (plus haut), 3e à droite ; portraits peints sur les marches.
+            var stage = UIKit.Rect("Podium", card);
+            UIKit.Size(stage.gameObject.AddComponent<LayoutElement>(), 400);
+            podium = new PodiumStep[3];
+            float[] heights = { 110f, 160f, 74f };
+            float[] xs = { -300f, 0f, 300f };
+            string[] ranks = { "2", "1", "3" };
+            for (int i = 0; i < 3; i++)
+            {
+                var step = new PodiumStep();
+                step.Root = UIKit.Rect("Step" + ranks[i], stage);
+                UIKit.Anchor(step.Root, new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(xs[i], 0f), new Vector2(270f, 400f));
+                var block = UIKit.Panel("Block", step.Root, new Color(0.10f, 0.08f, 0.05f, 0.95f), true, i == 1 ? UIKit.Gold : UIKit.Copper);
+                UIKit.Anchor(block.rectTransform, new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), Vector2.zero, new Vector2(250f, heights[i]));
+                var num = UIKit.Label("Rank", block.transform, ranks[i], i == 1 ? 72 : 56, i == 1 ? UIKit.Gold : UIKit.Copper, TextAnchor.MiddleCenter, FontStyle.Bold);
+                UIKit.Stretch(num.rectTransform);
+                float faceSize = i == 1 ? 170f : 130f;
+                step.Glow = new GameObject("Glow", typeof(RectTransform)).AddComponent<Image>();
+                step.Glow.transform.SetParent(step.Root, false);
+                step.Glow.sprite = UIKit.Glow;
+                step.Glow.color = UIKit.Gold;
+                step.Glow.raycastTarget = false;
+                UIKit.Anchor(step.Glow.rectTransform, new Vector2(0.5f, 0f), new Vector2(0.5f, 0.5f), new Vector2(0f, heights[i] + 56f + faceSize * 0.5f), new Vector2(faceSize * 2.1f, faceSize * 2.1f));
+                step.Glow.gameObject.SetActive(i == 1);
+                step.Face = BuildMedallion(step.Root, faceSize, i == 1 ? UIKit.Gold : UIKit.Copper);
+                UIKit.Anchor(step.Face.Root, new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0f, heights[i] + 56f), new Vector2(faceSize, faceSize));
+                step.Name = UIKit.Label("Name", step.Root, "", i == 1 ? 34 : 28, i == 1 ? UIKit.Gold : UIKit.Text, TextAnchor.MiddleCenter, FontStyle.Bold);
+                UIKit.Anchor(step.Name.rectTransform, new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0f, heights[i] + 8f), new Vector2(270f, 44f));
+                step.Name.resizeTextForBestFit = true;
+                step.Name.resizeTextMinSize = 18;
+                step.Name.resizeTextMaxSize = i == 1 ? 34 : 28;
+                podium[i] = step;
+            }
+
+            matchRest = UIKit.Label("Rest", card, "", 26, UIKit.TextDim);
+            matchRest.supportRichText = true;
+            UIKit.Size(matchRest, 70);
+            var row = Row(card, 110);
             MatchReplayButton = UIKit.Button("Replay", row, "Rejouer", () => { sfx.Play(Sfx.Click); Replay(); }, UIKit.Gold, 46);
             MatchMenuButton = UIKit.Button("Menu", row, "Menu", () => { sfx.Play(Sfx.Click); game.Abandon(); ShowHome(); }, UIKit.Magenta, 40);
         }
@@ -623,16 +673,49 @@ namespace Check.Game.UI
             bool won = winner == GameController.HumanId;
             matchTitle.text = won ? "VICTOIRE !" : "Partie finie";
             matchTitle.color = won ? UIKit.Gold : UIKit.Cyan;
-            var ranking = new System.Text.StringBuilder();
-            ranking.Append($"1. <color=#FFCC5C><b>{game.NameOf(winner)}</b></color>");
-            for (int i = m.Eliminated.Count - 1, rank = 2; i >= 0 && rank <= 10; i--, rank++)
-                ranking.Append($"   {rank}. {game.NameOf(m.Eliminated[i])}");
             string head = won ? "Tu remportes la partie de Check !" : $"<b>{game.NameOf(winner)}</b> gagne la partie.";
-            matchBody.text = head + $"\n{m.RoundNumber} tour{(m.RoundNumber > 1 ? "s" : "")} joué{(m.RoundNumber > 1 ? "s" : "")}\n\n<size=26>{ranking}</size>";
+            matchBody.text = head + $"\n<size=26>{m.RoundNumber} tour{(m.RoundNumber > 1 ? "s" : "")} joué{(m.RoundNumber > 1 ? "s" : "")}</size>";
+
+            var order = Standings.Of(m);
+            for (int i = 0; i < podium.Length; i++) podium[i].Root.gameObject.SetActive(false);
+            for (int rank = 1; rank <= Mathf.Min(3, order.Count); rank++)
+            {
+                var step = podium[Standings.PodiumSlot(rank)];
+                step.Root.gameObject.SetActive(true);
+                step.Name.text = game.NameOf(order[rank - 1]);
+                SetMedallion(step.Face, order[rank - 1]);
+            }
+            var rest = new System.Text.StringBuilder();
+            for (int rank = 4; rank <= order.Count; rank++)
+                rest.Append(rank > 4 ? "   " : "").Append($"{rank}. {game.NameOf(order[rank - 1])}");
+            matchRest.text = rest.ToString();
+            matchRest.gameObject.SetActive(order.Count > 3);
+
+            table.Celebrate(winner);
             sfx.Play(won ? Sfx.Victory : Sfx.Defeat);
             if (won) Haptics.Medium();
             Show(roundOverlay, false);
             StartCoroutine(ShowDelayed(matchOverlay, 0.6f));
+            podiumShownAt = Time.unscaledTime + 0.6f;
+        }
+
+        /// <summary>Le vainqueur est éclairé : halo doré qui respire, portrait qui monte sur sa marche.</summary>
+        void AnimatePodium()
+        {
+            if (podium == null || !matchOverlay.activeSelf) return;
+            float t = Time.unscaledTime - podiumShownAt;
+            var win = podium[1];
+            float pulse = 0.65f + 0.35f * Mathf.Sin(t * 3.2f);
+            win.Glow.color = UIKit.Gold * new Color(1, 1, 1, 0.55f * pulse);
+            win.Glow.rectTransform.localScale = Vector3.one * (1f + 0.08f * Mathf.Sin(t * 3.2f));
+            for (int i = 0; i < podium.Length; i++)
+            {
+                // Entrée échelonnée : 3e, puis 2e, puis 1er.
+                float delay = i == 2 ? 0f : i == 0 ? 0.15f : 0.3f;
+                float e = Mathf.Clamp01((t - delay) / 0.35f);
+                e = 1f - (1f - e) * (1f - e);
+                podium[i].Face.Root.localScale = Vector3.one * Mathf.Lerp(0.4f, 1f, e);
+            }
         }
 
         void Replay()

@@ -71,5 +71,38 @@ namespace Check.Tests
             var shown = RulesSheets.All.SelectMany(s => s.Cards).Select(c => c.Rank).ToList();
             foreach (var r in new[] { Rank.Ace, Rank.Seven, Rank.Joker, Rank.Jack, Rank.Two }) CollectionAssert.Contains(shown, r);
         }
+
+        // ---------- Classement final ----------
+
+        [Test]
+        public void Standings_WinnerFirstThenLastEliminatedFirst()
+        {
+            CollectionAssert.AreEqual(new[] { 2, 0, 3, 1 }, Standings.Order(2, new[] { 1, 3, 0 }));
+            CollectionAssert.AreEqual(new[] { 1, 0 }, Standings.Order(null, new[] { 0, 1 }));
+            Assert.AreEqual(1, Standings.PodiumSlot(1));
+            Assert.AreEqual(0, Standings.PodiumSlot(2));
+            Assert.AreEqual(2, Standings.PodiumSlot(3));
+            Assert.AreEqual(-1, Standings.PodiumSlot(4));
+        }
+
+        [Test]
+        public void Standings_OfAFullMatchListsEveryPlayerOnce()
+        {
+            var rng = new SystemRandom(11);
+            var match = new Match(RuleSet.Default, 5, rng);
+            var pick = new System.Random(3);
+            match.StartRound();
+            for (int guard = 0; guard < 20000 && !match.IsOver; guard++)
+            {
+                if (match.Round.IsOver) { match.StartRound(); continue; }
+                var legal = match.Round.LegalActions();
+                match.Apply(legal[pick.Next(legal.Count)]);
+            }
+            Assert.IsTrue(match.IsOver);
+            var order = Standings.Of(match);
+            Assert.AreEqual(5, order.Count);
+            Assert.AreEqual(match.Winner, order[0]);
+            CollectionAssert.AreEquivalent(Enumerable.Range(0, 5), order);
+        }
     }
 }

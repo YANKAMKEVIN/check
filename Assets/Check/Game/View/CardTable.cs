@@ -813,6 +813,20 @@ namespace Check.Game.View
 
         // ---------------------------------------------------------------- Points d'écran pour l'interface
 
+        /// <summary>Portrait peint du joueur (visage cadré dans <paramref name="face"/>), faux s'il n'en a pas.</summary>
+        public bool TryGetPortrait(int player, out Texture2D texture, out Rect face)
+        {
+            texture = null;
+            face = new Rect(0f, 0f, 1f, 1f);
+            return table != null && table.TryGetPortrait(player, out texture, out face);
+        }
+
+        /// <summary>Effet de célébration de « Games » à la place du joueur.</summary>
+        public void Celebrate(int player)
+        {
+            if (table != null && player >= 0) table.PlayGames(SeatPoint(player));
+        }
+
         public Vector3 WorldToScreen(Vector3 world) => cam != null ? cam.WorldToScreenPoint(world) : Vector3.zero;
         public Vector3 BadgeScreenPoint(int player) => WorldToScreen(TableLayout.Seat(player, playerCount).BadgePoint);
 

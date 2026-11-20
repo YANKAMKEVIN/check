@@ -42,6 +42,43 @@ namespace Check.Game.Visuals
             new Portrait(9, false, 1, 0.56f, 5.3f),  // jeune gars à la casquette
         };
 
+        /// <summary>Cadrage du visage dans chaque image (coordonnées UV, origine en bas à gauche), index = perso_N - 1.</summary>
+        static readonly Rect[] FaceUv =
+        {
+            new Rect(0.224f, 0.711f, 0.350f, 0.250f),
+            new Rect(0.206f, 0.711f, 0.598f, 0.250f),
+            new Rect(0.176f, 0.711f, 0.375f, 0.250f),
+            new Rect(0.125f, 0.711f, 0.412f, 0.250f),
+            new Rect(0.215f, 0.711f, 0.337f, 0.250f),
+            new Rect(0.101f, 0.711f, 0.373f, 0.250f),
+            new Rect(0.120f, 0.711f, 0.331f, 0.250f),
+            new Rect(0.197f, 0.711f, 0.360f, 0.250f),
+            new Rect(0.224f, 0.711f, 0.372f, 0.250f),
+        };
+
+        /// <summary>Nombre de portraits peints (perso_1 à perso_N).</summary>
+        public static int PortraitCount => FaceUv.Length;
+
+        /// <summary>Image du portrait n° <paramref name="index"/> (1 à <see cref="PortraitCount"/>) et cadrage de son visage.</summary>
+        public static bool TryGetPortraitImage(int index, out Texture2D texture, out Rect face)
+        {
+            texture = null;
+            face = new Rect(0f, 0f, 1f, 1f);
+            if (index < 1 || index > FaceUv.Length) return false;
+            texture = Load(index);
+            face = FaceUv[index - 1];
+            return texture != null;
+        }
+
+        /// <summary>Portrait assis à la place de l'adversaire <paramref name="playerId"/> (faux pour le joueur humain).</summary>
+        public bool TryGetPortrait(int playerId, out Texture2D texture, out Rect face)
+        {
+            texture = null;
+            face = new Rect(0f, 0f, 1f, 1f);
+            if (playerId <= 0 || playerId >= seats.Length || seats[playerId] == null) return false;
+            return TryGetPortraitImage(seats[playerId].P.Index, out texture, out face);
+        }
+
         sealed class Figure
         {
             public Transform T;
