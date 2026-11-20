@@ -24,6 +24,7 @@ namespace Check.Game.UI
         Button[] ruleButtons;
         Text roundTitle, roundBody;
         Medallion roundLoserFace;
+        readonly Text[] suitCounts = new Text[4];
         GameObject roundNextRow, roundOutRow;
         Text matchTitle, matchBody;
         Coroutine autoNext;
@@ -574,6 +575,8 @@ namespace Check.Game.UI
         void BuildSuitPicker()
         {
             suitOverlay = Overlay("SuitPicker", out var card, 1200, 600, UIKit.Gold, 0.5f);
+            // Fenêtre remontée : la main du joueur, en bas, reste visible.
+            card.anchoredPosition = new Vector2(0, 150);
             UIKit.VStack(card, 20, 40);
             Title(card, "Valet : quelle couleur demandes-tu ?", 50, UIKit.Gold, 74);
             var row = Row(card, 280, 24);
@@ -590,9 +593,12 @@ namespace Check.Game.UI
                 label.fontSize = 170;
                 label.resizeTextMaxSize = 170;
                 label.color = red ? UIKit.SuitRed : UIKit.Text;
-                UIKit.Stretch(label.rectTransform, 6, 50, 6, 4);
+                UIKit.Stretch(label.rectTransform, 6, 84, 6, 4);
                 var caption = UIKit.Label("Caption", b.transform, names[i], 30, UIKit.TextDim, TextAnchor.MiddleCenter, FontStyle.Bold);
-                UIKit.Stretch(caption.rectTransform, 6, 10, 6, 220);
+                UIKit.Stretch(caption.rectTransform, 6, 46, 6, 196);
+                // Cartes de cette couleur qu'il restera en main après la pose.
+                suitCounts[(int)suit] = UIKit.Label("Count", b.transform, "", 26, UIKit.TextDim, TextAnchor.MiddleCenter);
+                UIKit.Stretch(suitCounts[(int)suit].rectTransform, 6, 10, 6, 236);
                 SuitButtons[(int)suit] = b;
             }
             UIKit.Size(UIKit.Button("Cancel", card, "Annuler", () => PickSuit(null), UIKit.TextDim, 34), 90);
@@ -602,6 +608,20 @@ namespace Check.Game.UI
         {
             if (suitCallback != null) { var old = suitCallback; suitCallback = null; old(null); }
             suitCallback = callback;
+            var counts = SuitAdvice.Counts(game.HumanSeat >= 0 ? game.Round.Hand(game.HumanSeat) : null, human.Selection);
+            var best = SuitAdvice.Best(counts);
+            for (int s = 0; s < 4; s++)
+            {
+                int n = counts[s];
+                bool top = best.HasValue && (int)best.Value == s;
+                suitCounts[s].text = n == 0 ? "aucune en main" : n == 1 ? "1 carte en main" : $"{n} cartes en main";
+                suitCounts[s].color = top ? UIKit.Gold : UIKit.TextDim;
+                suitCounts[s].fontStyle = top ? FontStyle.Bold : FontStyle.Normal;
+                SuitButtons[s].GetComponent<Image>().color = top
+                    ? Color.Lerp(new Color(0.08f, 0.10f, 0.20f, 0.95f), UIKit.Gold, 0.35f)
+                    : new Color(0.08f, 0.10f, 0.20f, 0.85f);
+                SuitButtons[s].transform.localScale = Vector3.one * (top ? 1.06f : 1f);
+            }
             Show(suitOverlay, true);
         }
 

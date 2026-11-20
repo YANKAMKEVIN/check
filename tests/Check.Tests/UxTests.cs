@@ -229,5 +229,18 @@ namespace Check.Tests
             Assert.AreEqual(PlayerIdentity.MaxLength, PlayerIdentity.Sanitize("Abcdefghijklmnopqrstuvwxyz").Length);
             Assert.AreEqual("Toi", PlayerIdentity.Sanitize("<>"));
         }
+
+        // ---------- Valet : aide au choix de la couleur ----------
+
+        [Test]
+        public void SuitAdvice_CountsWhatRemainsAfterThePlay()
+        {
+            var hand = Cs("VS 3H 9H KD 4C JkR");
+            var counts = SuitAdvice.Counts(hand, Cs("VS"));
+            CollectionAssert.AreEqual(new[] { 0, 2, 1, 1 }, counts);
+            Assert.AreEqual(Suit.Hearts, SuitAdvice.Best(counts));
+            Assert.AreEqual(Suit.Spades, SuitAdvice.Best(new[] { 1, 1, 0, 0 }), "égalité : premier dans l'ordre");
+            Assert.IsNull(SuitAdvice.Best(SuitAdvice.Counts(Cs("JkN"), null)));
+        }
     }
 }
