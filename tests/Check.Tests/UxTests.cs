@@ -242,5 +242,35 @@ namespace Check.Tests
             Assert.AreEqual(Suit.Spades, SuitAdvice.Best(new[] { 1, 1, 0, 0 }), "égalité : premier dans l'ordre");
             Assert.IsNull(SuitAdvice.Best(SuitAdvice.Counts(Cs("JkN"), null)));
         }
+
+        // ---------- Qui joue ensuite ----------
+
+        [Test]
+        public void TurnOrder_SkipsPlayersOutOfTheRound()
+        {
+            var outs = new bool[6];
+            Assert.AreEqual(2, TurnOrder.Next(1, 6, p => outs[p]));
+            outs[2] = outs[3] = true;
+            Assert.AreEqual(4, TurnOrder.Next(1, 6, p => outs[p]));
+            Assert.AreEqual(0, TurnOrder.Next(5, 6, p => outs[p]));
+            outs[0] = outs[4] = outs[5] = true;
+            Assert.AreEqual(-1, TurnOrder.Next(1, 6, p => outs[p]));
+            Assert.AreEqual(-1, TurnOrder.Next(-1, 6, p => false));
+        }
+
+        [Test]
+        public void TurnOrder_MatchesTheEngineAfterEliminations()
+        {
+            // Partie à 5 où le joueur 2 est déjà éliminé : le moteur fait jouer 0, 1, 3, 4 dans cet ordre.
+            var round = new Round(RuleSet.Default, new[] { 0, 1, 3, 4 }, 0, new SystemRandom(5));
+            for (int k = 0; k < 4; k++)
+            {
+                int player = round.PlayerId(round.Current);
+                int expected = TurnOrder.Next(player, 5, p => p == 2);
+                round.Apply(TurnAction.Draw);
+                if (round.HasDrawn) round.Apply(TurnAction.Pass);
+                Assert.AreEqual(expected, round.PlayerId(round.Current));
+            }
+        }
     }
 }

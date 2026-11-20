@@ -78,6 +78,7 @@ namespace Check.Game.UI
             BuildScreens();
             BuildTips();
             BuildCardHelp();
+            BuildNextArrow();
 
             human.UiBlocked = () => IsBlockingOverlayOpen;
             human.AskSuit = AskSuit;
@@ -394,6 +395,7 @@ namespace Check.Game.UI
                     SetEventStatus($"Pénalité : {e.Count} cartes à piocher !", 1.4f);
                     break;
                 case GameEventKind.Skipped:
+                    NoteSkipped(p);
                     AddLog($"{who} : saute son tour");
                     Say(p, "Saute !", UIKit.Magenta, 1.4f);
                     SetEventStatus(me ? "Tu passes ton tour !" : $"{who} passe son tour !", 1.3f);
@@ -500,6 +502,7 @@ namespace Check.Game.UI
 
             RefreshStatus();
             RefreshBadges();
+            RefreshNextArrow();
             RefreshPileIndicators();
             RefreshActions();
             RefreshTips();
