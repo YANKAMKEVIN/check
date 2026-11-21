@@ -29,7 +29,7 @@ namespace Check.Core
             new RulesSheet("À ton tour",
                 "<b><color=#FFCC5C>À ton tour</color></b>\nPose une carte de la <b>même couleur</b> (♠ ♣ <color=#FF5C73>♥ ♦</color>) ou de la <b>même valeur</b> que la carte du dessus. " +
                 "Tu peux poser d'un coup plusieurs cartes de même valeur (doubler, tripler) : la dernière posée devient le dessus. " +
-                "Sinon, pioche une carte : si elle est jouable tu peux la poser, sinon tu passes.",
+                "Sinon, pioche une carte : c'est alors au joueur suivant (la carte piochée se pose à ton prochain tour).",
                 Card.Parse("9H"), Card.Parse("4H"), Card.Parse("4S")),
             new RulesSheet("Cartes spéciales",
                 "<b><color=#FFCC5C>Cartes spéciales</color></b>\n" +

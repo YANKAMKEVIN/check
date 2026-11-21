@@ -370,10 +370,67 @@ namespace Check.Tests
 
         // ---------- Pioche ----------
 
+        /// <summary>Règle de Kevin (21/11) : « Si tu pioches, c'est le tour de la personne qui suit. »</summary>
         [Test]
-        public void Draw_PlayableDrawnCardMayBePlayed()
+        public void Draw_EndsTurnEvenIfDrawnCardIsPlayable()
         {
             var r = Pos("KD 3C", "6C 6D", "8C 8D", "5H", drawPile: "4C 9H");
+            var ev = r.Apply(TurnAction.Draw);
+            Assert.AreEqual(1, r.Current, "9♥ jouable, mais piocher termine le tour");
+            Assert.IsFalse(r.HasDrawn);
+            Assert.IsNull(r.DrawnCard);
+            Assert.AreEqual(3, r.Hand(0).Count, "la carte piochée reste en main");
+            Assert.IsTrue(r.Hand(0).Contains(C("9H")));
+            Assert.AreEqual(C("5H"), r.Top);
+            Assert.IsTrue(ev.Any(e => e.Kind == GameEventKind.Drew && e.Seat == 0));
+            Assert.IsFalse(ev.Any(e => e.Kind == GameEventKind.Passed), "pas de « passe » : la pioche suffit");
+            Assert.IsTrue(ev.Any(e => e.Kind == GameEventKind.TurnStarted && e.Seat == 1));
+        }
+
+        [Test]
+        public void Draw_UnplayableDrawnCardEndsTurnToo()
+        {
+            var r = Pos("KD 3C", "6C 6D", "8C 8D", "5H", drawPile: "4C 9S");
+            r.Apply(TurnAction.Draw);
+            Assert.AreEqual(1, r.Current);
+            Assert.IsFalse(r.HasDrawn);
+        }
+
+        [Test]
+        public void Draw_PassIsNeverLegal()
+        {
+            var r = Pos("KD 3C", "6C 6D", "8C 8D", "5H", drawPile: "4C 9H");
+            Assert.IsFalse(r.IsLegal(TurnAction.Pass));
+            Assert.IsFalse(r.LegalActions().Contains(TurnAction.Pass));
+            r.Apply(TurnAction.Draw);
+            Assert.IsFalse(r.IsLegal(TurnAction.Pass));
+            Assert.IsTrue(r.IsLegal(TurnAction.Draw), "le suivant peut piocher à son tour");
+        }
+
+        [Test]
+        public void Draw_DrawnCardCanBePlayedOnNextTurn()
+        {
+            var r = Pos("KD 3C", "6H 6D", "8C 8D", "5H", drawPile: "4C 9H");
+            r.Apply(TurnAction.Draw);                 // le siège 0 pioche 9♥ : au suivant
+            Play(r, "6H");
+            r.Apply(TurnAction.Draw);                 // le siège 2 pioche 4♣
+            Assert.AreEqual(0, r.Current);
+            Assert.IsTrue(CanPlay(r, "9H"), "la carte piochée se pose au tour suivant");
+        }
+
+        // Variante (réglage MayPlayDrawnCard) : l'ancienne règle « pioche, puis pose ou passe ».
+
+        static RuleSet PlayDrawnVariant()
+        {
+            var rules = RuleSet.Default;
+            rules.MayPlayDrawnCard = true;
+            return rules;
+        }
+
+        [Test]
+        public void Draw_Variant_PlayableDrawnCardMayBePlayed()
+        {
+            var r = Pos("KD 3C", "6C 6D", "8C 8D", "5H", drawPile: "4C 9H", rules: PlayDrawnVariant());
             r.Apply(TurnAction.Draw);
             Assert.AreEqual(0, r.Current, "9♥ jouable : le joueur garde la main");
             Assert.IsTrue(r.HasDrawn);
@@ -384,9 +441,9 @@ namespace Check.Tests
         }
 
         [Test]
-        public void Draw_UnplayableDrawnCardPassesAutomatically()
+        public void Draw_Variant_UnplayableDrawnCardPassesAutomatically()
         {
-            var r = Pos("KD 3C", "6C 6D", "8C 8D", "5H", drawPile: "4C 9S");
+            var r = Pos("KD 3C", "6C 6D", "8C 8D", "5H", drawPile: "4C 9S", rules: PlayDrawnVariant());
             var ev = r.Apply(TurnAction.Draw);
             Assert.AreEqual(1, r.Current);
             Assert.IsTrue(ev.Any(e => e.Kind == GameEventKind.Passed));
@@ -482,7 +539,7 @@ namespace Check.Tests
             Play(r, "9H");
             Play(r, "9D", check: true);
             Assert.AreEqual(2, r.Current);
-            r.Apply(TurnAction.Draw); // pioche 5S injouable → passe
+            r.Apply(TurnAction.Draw); // pioche 5S : piocher termine le tour
             Assert.AreEqual(1, r.Current, "le siège 0 a fini, on revient au siège 1");
         }
 
@@ -558,11 +615,13 @@ namespace Check.Tests
 
         /// <summary>Parties aléatoires : conservation des 54 cartes, actions légales cohérentes, fin garantie.</summary>
         [Test]
-        public void Fuzz_RandomGamesKeepInvariants([Values(2, 3, 4, 6, 8, 10)] int players)
+        public void Fuzz_RandomGamesKeepInvariants([Values(2, 3, 4, 6, 8, 10)] int players, [Values(false, true)] bool mayPlayDrawn)
         {
+            var rules = RuleSet.Default;
+            rules.MayPlayDrawnCard = mayPlayDrawn;
             for (int seed = 0; seed < 40; seed++)
             {
-                var match = new Match(RuleSet.Default, players, new SystemRandom(seed * 31 + players));
+                var match = new Match(rules, players, new SystemRandom(seed * 31 + players));
                 var rng = new SystemRandom(seed);
                 int steps = 0;
                 while (!match.IsOver)
@@ -573,8 +632,16 @@ namespace Check.Tests
                         var r = match.Round;
                         var actions = r.LegalActions();
                         Assert.IsNotEmpty(actions);
+                        if (!mayPlayDrawn) Assert.IsFalse(actions.Contains(TurnAction.Pass), "jamais de « passe » après une pioche");
                         var a = actions[rng.Next(actions.Count)];
+                        int seat = r.Current;
+                        bool voluntaryDraw = a.Kind == ActionKind.Draw && r.PendingDraw == 0;
                         match.Apply(a);
+                        if (voluntaryDraw && !mayPlayDrawn)
+                        {
+                            Assert.AreNotEqual(seat, r.Current, $"graine {seed} : piocher passe la main");
+                            Assert.IsFalse(r.HasDrawn);
+                        }
                         int total = r.DrawPileCount + r.Discard.Count;
                         for (int s = 0; s < r.SeatCount; s++) total += r.Hand(s).Count;
                         Assert.AreEqual(54, total, $"graine {seed}, après {a}");

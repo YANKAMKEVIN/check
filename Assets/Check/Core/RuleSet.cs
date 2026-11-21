@@ -24,8 +24,11 @@ namespace Check.Core
         /// <summary>Poser plusieurs cartes de même valeur en une fois.</summary>
         public bool AllowMultiples = true;
 
-        /// <summary>Après avoir pioché, on peut poser la carte piochée si elle est jouable.</summary>
-        public bool MayPlayDrawnCard = true;
+        /// <summary>
+        /// Après avoir pioché, on peut poser la carte piochée si elle est jouable. Faux par défaut : règle de Kevin
+        /// (21/11) « Si tu pioches, c'est le tour de la personne qui suit » ; piocher termine le tour.
+        /// </summary>
+        public bool MayPlayDrawnCard = false;
 
         /// <summary>On peut piocher même si on a une carte jouable.</summary>
         public bool MayDrawVoluntarily = true;
