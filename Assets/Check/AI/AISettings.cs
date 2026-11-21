@@ -41,6 +41,12 @@ namespace Check.AI
         /// </summary>
         public double HeuristicBias;
 
+        /// <summary>
+        /// Les mondes simulés respectent les indices publics sur les mains adverses (<see cref="Check.Core.Round.MissingCards"/>) :
+        /// un adversaire qui a pioché faute de jouer n'avait ni la couleur ni la valeur du dessus.
+        /// </summary>
+        public bool UseHandClues;
+
         /// <summary>Écart (en erreurs types de la différence appariée) au-delà duquel un candidat est abandonné.</summary>
         public double PruneZ = 2.5;
 
@@ -72,6 +78,7 @@ namespace Check.AI
                     {
                         Level = AILevel.Expert, DisplayName = "Expert", UseSearch = true, TimeBudgetMs = 350,
                         MaxIterations = 12000, MaxCandidates = 10, RolloutRandomness = 0.03, HeuristicBias = 0.02,
+                        UseHandClues = true,
                     };
             }
         }

@@ -38,7 +38,7 @@ namespace Check.AI
             var scored = new List<KeyValuePair<double, TurnAction>>(legal.Count);
             foreach (var a in legal)
             {
-                double sc = Heuristics.Score(root, seat, a);
+                double sc = Heuristics.Score(root, seat, a, settings.UseHandClues);
                 int same = a.RequestedSuit.HasValue ? scored.FindIndex(kv => SameCards(kv.Value, a)) : -1;
                 if (same < 0) scored.Add(new KeyValuePair<double, TurnAction>(sc, a));
                 else if (sc > scored[same].Key) scored[same] = new KeyValuePair<double, TurnAction>(sc, a);
@@ -80,7 +80,7 @@ namespace Check.AI
 
                 int worldSeed = rng.Next(int.MaxValue), playSeed = rng.Next(int.MaxValue);
                 var world = root.Clone(new SystemRandom(worldSeed));
-                world.RedealHiddenCards(seat, new SystemRandom(worldSeed));
+                world.RedealHiddenCards(seat, new SystemRandom(worldSeed), settings.UseHandClues);
                 bool complete = true;
                 foreach (int i in alive)
                 {
@@ -178,7 +178,7 @@ namespace Check.AI
                 TurnAction a;
                 if (actions.Count == 1) a = actions[0];
                 else if (randomPermil > 0 && rng.Next(1000) < randomPermil) a = actions[rng.Next(actions.Count)];
-                else a = Heuristics.Best(w, w.Current, actions, rng);
+                else a = Heuristics.Best(w, w.Current, actions, rng, settings.UseHandClues);
                 w.Apply(a);
             }
             return Outcome(w, seat);
