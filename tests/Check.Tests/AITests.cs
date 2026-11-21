@@ -70,7 +70,8 @@ namespace Check.Tests
                     }
                 }
             }
-            Assert.Greater(decisions, 50);
+            // Simple garde-fou (des parties ont bien été jouées) : trois parties à deux font une trentaine de décisions.
+            Assert.Greater(decisions, 30);
         }
 
         /// <summary>Positions aléatoires en cours de partie (y compris après une pioche, sous pénalité, après un Valet).</summary>

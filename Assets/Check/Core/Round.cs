@@ -20,6 +20,10 @@ namespace Check.Core
         readonly List<Card> discard;    // dessous = 0, dessus = dernier élément
         readonly bool[] finished;
         readonly List<int> finishOrder;
+        // Indices publics (voir MissingCards) : cartes qu'un siège n'avait pas quand il a pioché faute de jouer,
+        // et nombre de cartes de sa main encore concernées.
+        readonly ulong[] missingMask;
+        readonly int[] missingHeld;
 
         public int Current { get; private set; }
         /// <summary>Couleur demandée par le dernier Valet posé, tant qu'elle n'a pas été jouée.</summary>
@@ -48,6 +52,29 @@ namespace Check.Core
         public IReadOnlyList<int> FinishOrder => finishOrder;
         public int ActiveCount => finished.Count(f => !f);
 
+        /// <summary>
+        /// Indice public sur la main de <paramref name="seat"/> : quand un joueur pioche sans pénalité, on en déduit
+        /// qu'il n'avait aucune carte jouable à ce moment-là (bit n° <see cref="Card.Id"/> de chaque carte exclue).
+        /// L'indice vaut pour les <see cref="MissingCardsHeld"/> cartes les plus anciennes de sa main ; celles piochées
+        /// depuis peuvent être n'importe quoi. Tout le monde voit la pioche et le tas : ce n'est pas de la triche.
+        /// Si le joueur pose ensuite une carte exclue (il avait pioché exprès), l'indice est effacé.
+        /// </summary>
+        public ulong MissingCards(int seat) => missingMask[seat];
+
+        /// <summary>Nombre de cartes de la main de <paramref name="seat"/> concernées par <see cref="MissingCards"/>.</summary>
+        public int MissingCardsHeld(int seat) => missingHeld[seat];
+
+        /// <summary>
+        /// Vrai si l'on sait que <paramref name="seat"/> n'a aucune carte de cette couleur (♠ ♥ ♦ ♣) : il l'a montré
+        /// en piochant et n'a pas pioché depuis.
+        /// </summary>
+        public bool IsKnownToLack(int seat, Suit suit)
+        {
+            if (missingHeld[seat] < hands[seat].Count) return false;
+            ulong suitMask = ((1UL << 13) - 1) << ((int)suit * 13);
+            return (missingMask[seat] & suitMask) == suitMask;
+        }
+
         /// <summary>Couleur (rouge / noir) qui s'impose au prochain joker.</summary>
         public CardColor EffectiveColor => RequestedSuit.HasValue ? Card.ColorOf(RequestedSuit.Value) : Top.Color;
 
@@ -64,6 +91,8 @@ namespace Check.Core
             for (int i = 0; i < n; i++) hands[i] = new List<Card>();
             finished = new bool[n];
             finishOrder = new List<int>();
+            missingMask = new ulong[n];
+            missingHeld = new int[n];
             discard = new List<Card>();
             drawPile = Card.FullDeck();
             random.Shuffle(drawPile);
@@ -94,6 +123,8 @@ namespace Check.Core
             discard = new List<Card>(o.discard);
             finished = (bool[])o.finished.Clone();
             finishOrder = new List<int>(o.finishOrder);
+            missingMask = (ulong[])o.missingMask.Clone();
+            missingHeld = (int[])o.missingHeld.Clone();
             Current = o.Current;
             RequestedSuit = o.RequestedSuit;
             PendingDraw = o.PendingDraw;
@@ -116,6 +147,8 @@ namespace Check.Core
             playerIds = Enumerable.Range(0, hands.Length).ToArray();
             finished = new bool[hands.Length];
             finishOrder = new List<int>();
+            missingMask = new ulong[hands.Length];
+            missingHeld = new int[hands.Length];
             Current = current;
             InitialEvents = Array.Empty<GameEvent>();
         }
@@ -145,10 +178,12 @@ namespace Check.Core
 
         /// <summary>
         /// Pour l'IA : redistribue au hasard tout ce que <paramref name="viewerSeat"/> ne voit pas
-        /// (mains adverses et pioche), en gardant le nombre de cartes de chacun.
+        /// (mains adverses et pioche), en gardant le nombre de cartes de chacun. Avec <paramref name="useClues"/>,
+        /// les mains tirées respectent les indices publics (<see cref="MissingCards"/>) quand c'est possible.
         /// </summary>
-        public void RedealHiddenCards(int viewerSeat, IRandom rng)
+        public void RedealHiddenCards(int viewerSeat, IRandom rng, bool useClues = false)
         {
+            if (useClues && RedealWithClues(viewerSeat, rng)) return;
             var pool = new List<Card>(drawPile);
             for (int s = 0; s < hands.Length; s++)
                 if (s != viewerSeat) pool.AddRange(hands[s]);
@@ -164,6 +199,104 @@ namespace Check.Core
             }
             for (int i = 0; i < drawPile.Count; i++) drawPile[i] = pool[k++];
             if (DrawnCard.HasValue && Current != viewerSeat) DrawnCard = hands[Current][hands[Current].Count - 1];
+        }
+
+        /// <summary>
+        /// Redistribution qui donne d'abord à chaque siège indicé ses cartes « anciennes » hors des cartes exclues,
+        /// puis complète au hasard. Renvoie faux (rien n'est modifié) si aucun siège n'a d'indice. Un indice
+        /// impossible à respecter (trop peu de cartes cachées compatibles) est ignoré.
+        /// </summary>
+        bool RedealWithClues(int viewerSeat, IRandom rng)
+        {
+            bool any = false;
+            for (int s = 0; s < hands.Length; s++)
+                if (s != viewerSeat && missingHeld[s] > 0 && missingMask[s] != 0) { any = true; break; }
+            if (!any) return false;
+
+            var pool = new List<Card>(drawPile);
+            for (int s = 0; s < hands.Length; s++)
+                if (s != viewerSeat) pool.AddRange(hands[s]);
+            pool.Sort((a, b) => a.Id.CompareTo(b.Id));
+            rng.Shuffle(pool);
+            var taken = new bool[pool.Count];
+            var dealt = new List<Card>[hands.Length];
+
+            // Sièges indicés, du plus contraint (le plus de cartes exclues) au moins contraint ; ordre stable.
+            var order = new List<int>();
+            for (int s = 0; s < hands.Length; s++)
+                if (s != viewerSeat && missingHeld[s] > 0 && missingMask[s] != 0) order.Add(s);
+            order.Sort((a, b) =>
+            {
+                int c = PopCount(missingMask[b]).CompareTo(PopCount(missingMask[a]));
+                return c != 0 ? c : a.CompareTo(b);
+            });
+            foreach (int s in order)
+            {
+                int need = Math.Min(missingHeld[s], hands[s].Count);
+                var picked = new List<int>(need);
+                for (int i = 0; i < pool.Count && picked.Count < need; i++)
+                    if (!taken[i] && (missingMask[s] & (1UL << pool[i].Id)) == 0) picked.Add(i);
+                if (picked.Count < need) continue; // indice intenable : main tirée sans contrainte
+                dealt[s] = new List<Card>(hands[s].Count);
+                foreach (int i in picked) { taken[i] = true; dealt[s].Add(pool[i]); }
+            }
+
+            int k = 0;
+            Card NextFree()
+            {
+                while (taken[k]) k++;
+                taken[k] = true;
+                return pool[k];
+            }
+            for (int s = 0; s < hands.Length; s++)
+            {
+                if (s == viewerSeat) continue;
+                var h = dealt[s] ?? new List<Card>(hands[s].Count);
+                // Les cartes libres (piochées depuis l'indice) vont en fin de main, comme la carte qu'on vient de piocher.
+                while (h.Count < hands[s].Count) h.Add(NextFree());
+                for (int i = 0; i < h.Count; i++) hands[s][i] = h[i];
+            }
+            for (int i = 0; i < drawPile.Count; i++) drawPile[i] = NextFree();
+            if (DrawnCard.HasValue && Current != viewerSeat) DrawnCard = hands[Current][hands[Current].Count - 1];
+            return true;
+        }
+
+        static int PopCount(ulong v)
+        {
+            int c = 0;
+            while (v != 0) { v &= v - 1; c++; }
+            return c;
+        }
+
+        /// <summary>Met à jour l'indice public quand <paramref name="seat"/> pioche sans pénalité (avant la pioche).</summary>
+        void NoteVoluntaryDraw(int seat)
+        {
+            ulong mask = 0;
+            for (int id = 0; id <= Card.RedJokerId; id++)
+                if (CanStartWith(new Card(id))) mask |= 1UL << id;
+            int count = hands[seat].Count;
+            // Toute la main était déjà indicée : les deux indices se cumulent. Sinon on garde le plus récent.
+            if (missingHeld[seat] >= count && missingHeld[seat] > 0) missingMask[seat] |= mask;
+            else missingMask[seat] = mask;
+            missingHeld[seat] = count;
+            if (count == 0) missingMask[seat] = 0;
+        }
+
+        /// <summary>Met à jour l'indice public quand <paramref name="seat"/> pose <paramref name="c"/> (avant de la retirer).</summary>
+        void NotePlayedCard(int seat, Card c)
+        {
+            if (missingHeld[seat] == 0) return;
+            if ((missingMask[seat] & (1UL << c.Id)) != 0)
+            {
+                // Carte exclue : elle vient forcément des cartes piochées depuis. S'il n'y en a pas, le joueur avait
+                // pioché exprès : l'indice était faux, on l'oublie.
+                if (hands[seat].Count - missingHeld[seat] <= 0) { missingMask[seat] = 0; missingHeld[seat] = 0; }
+                return;
+            }
+            // Carte permise : on ne sait pas d'où elle vient ; supposer qu'elle sort des cartes indicées garde un
+            // indice toujours vrai (au pire plus faible que la réalité).
+            missingHeld[seat]--;
+            if (missingHeld[seat] == 0) missingMask[seat] = 0;
         }
 
         Card Pop()
@@ -328,7 +461,7 @@ namespace Check.Core
         {
             int seat = Current;
             var cards = action.Cards;
-            foreach (var c in cards) hands[seat].Remove(c);
+            foreach (var c in cards) { NotePlayedCard(seat, c); hands[seat].Remove(c); }
             int skip = 0;
 
             if (cards[0].Rank == Rank.Two)
@@ -404,6 +537,7 @@ namespace Check.Core
                 return;
             }
 
+            NoteVoluntaryDraw(seat);
             var drawn = DrawCards(seat, 1, events);
             events.Add(new GameEvent { Kind = GameEventKind.Drew, Seat = seat, Cards = drawn, Count = drawn.Count });
             HasDrawn = true;
@@ -411,6 +545,10 @@ namespace Check.Core
             // Carte piochée injouable : on passe tout de suite.
             if (!Rules.MayPlayDrawnCard || !DrawnCard.HasValue || !CanStartWith(DrawnCard.Value))
             {
+                // Passe automatique : tout le monde voit que la carte piochée ne se posait pas non plus, l'indice
+                // couvre donc toute la main.
+                if (DrawnCard.HasValue && !CanStartWith(DrawnCard.Value) && missingMask[seat] != 0)
+                    missingHeld[seat] = hands[seat].Count;
                 events.Add(new GameEvent { Kind = GameEventKind.Passed, Seat = seat });
                 Advance(seat, 0, events);
             }

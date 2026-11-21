@@ -54,7 +54,56 @@ namespace Check.AI
             return false;
         }
 
-        public static double Score(Round r, int seat, TurnAction a)
+        /// <summary>
+        /// Bonus quand le dessus laissé au suivant ne lui laisse, d'après les indices publics
+        /// (<see cref="Round.MissingCards"/>), aucune carte jouable parmi celles qu'il avait en piochant.
+        /// </summary>
+        public const double BlockBonus = 7;
+
+        /// <summary>
+        /// Part (0 à 1) de la main de <paramref name="next"/> dont on sait qu'elle ne peut rien poser sur
+        /// <paramref name="top"/> (couleur demandée <paramref name="requested"/>) : 1 = il devra piocher.
+        /// Les cartes que <paramref name="viewer"/> voit (sa main, le tas) ne peuvent pas être chez le suivant.
+        /// </summary>
+        public static double BlockedShare(Round r, int viewer, int next, Card top, Suit? requested)
+        {
+            int held = r.MissingCardsHeld(next), count = r.Hand(next).Count;
+            if (held <= 0 || count <= 0) return 0;
+            ulong excluded = r.MissingCards(next);
+            foreach (var c in r.Hand(viewer)) excluded |= 1UL << c.Id;
+            var discard = r.Discard;
+            for (int i = 0; i < discard.Count; i++) excluded |= 1UL << discard[i].Id;
+            // Cartes cachées (ni chez soi ni au tas) que le suivant pourrait avoir, et celles qui le sauveraient.
+            int hidden = 0, saving = 0;
+            for (int id = 0; id <= Card.RedJokerId; id++)
+            {
+                if ((excluded & (1UL << id)) != 0) continue;
+                hidden++;
+                if (Playable(r.Rules, new Card(id), top, requested)) saving++;
+            }
+            if (hidden <= 0) return 0;
+            // Chance qu'aucune de ses cartes indicées ne soit une carte qui le sauve (tirage approché avec remise).
+            double p = 1;
+            double miss = 1 - (double)saving / hidden;
+            int n = System.Math.Min(held, count);
+            for (int i = 0; i < n; i++) p *= miss;
+            return p * n / count;
+        }
+
+        /// <summary>Carte jouable sur un dessus donné, sans pénalité en cours (mêmes règles que <see cref="Round.CanStartWith"/>).</summary>
+        static bool Playable(RuleSet rules, Card c, Card top, Suit? requested)
+        {
+            if (c.Rank == Rank.Two) return true;
+            if (c.Rank == Rank.Jack && rules.JackIsWild) return true;
+            CardColor color = requested.HasValue ? Card.ColorOf(requested.Value) : top.Color;
+            if (c.IsJoker) return c.Color == color;
+            if (requested.HasValue) return c.Suit == requested.Value || (!top.IsJoker && c.Rank == top.Rank);
+            if (top.IsJoker) return c.Color == top.Color;
+            return c.Suit == top.Suit || c.Rank == top.Rank;
+        }
+
+        /// <param name="useClues">Tenir compte des indices publics sur la main du suivant (niveau Expert).</param>
+        public static double Score(Round r, int seat, TurnAction a, bool useClues = false)
         {
             var hand = r.Hand(seat);
             int next = NextActive(r, seat);
@@ -119,6 +168,10 @@ namespace Check.AI
                 else if (!top.IsJoker && c.Rank == top.Rank && rank != Rank.Two) s += 2;
             }
 
+            // Indices : le suivant a montré qu'il n'avait pas cette couleur ; la lui laisser le force à piocher.
+            if (useClues && next != seat && rank != Rank.Seven && rank != Rank.Joker && rank != Rank.Ace)
+                s += BlockBonus * BlockedShare(r, seat, next, top, requested);
+
             if (rank == Rank.Jack)
             {
                 // Demander la couleur la plus présente dans sa main (la souplesse ci-dessus compte déjà ces cartes).
@@ -136,14 +189,14 @@ namespace Check.AI
         }
 
         /// <summary>Meilleure action selon <see cref="Score"/> ; égalités départagées au hasard.</summary>
-        public static TurnAction Best(Round r, int seat, List<TurnAction> actions, IRandom rng)
+        public static TurnAction Best(Round r, int seat, List<TurnAction> actions, IRandom rng, bool useClues = false)
         {
             TurnAction best = actions[0];
             double bestScore = double.NegativeInfinity;
             int ties = 0;
             foreach (var a in actions)
             {
-                double sc = Score(r, seat, a);
+                double sc = Score(r, seat, a, useClues);
                 if (sc > bestScore + 1e-9) { best = a; bestScore = sc; ties = 1; }
                 else if (sc > bestScore - 1e-9 && rng.Next(++ties) == 0) best = a;
             }
