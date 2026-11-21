@@ -168,7 +168,7 @@ namespace Check.AI
             int randomPermil = (int)(settings.RolloutRandomness * 1000);
             int guard = 0;
             var r = w.Rules;
-            bool fast = r.AllowMultiples && r.MayPlayDrawnCard && r.MayDrawVoluntarily;
+            bool fast = r.AllowMultiples && r.MayDrawVoluntarily; // HasDrawn est géré (variante MayPlayDrawnCard)
             var buffer = new List<TurnAction>(16);
             while (!w.IsOver && !w.IsFinished(seat) && w.TurnNumber - startTurn < settings.MaxRolloutTurns && guard++ < 4 * settings.MaxRolloutTurns)
             {

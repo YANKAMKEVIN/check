@@ -72,6 +72,16 @@ namespace Check.Tests
             foreach (var r in new[] { Rank.Ace, Rank.Seven, Rank.Joker, Rank.Jack, Rank.Two }) CollectionAssert.Contains(shown, r);
         }
 
+        /// <summary>Règle de Kevin (21/11) : piocher termine le tour, la fiche ne doit plus proposer de poser la carte piochée.</summary>
+        [Test]
+        public void RulesSheets_DrawingEndsTheTurn()
+        {
+            var turn = RulesSheets.All.Single(s => s.Title == "À ton tour").Body;
+            StringAssert.Contains("au joueur suivant", turn);
+            StringAssert.DoesNotContain("tu peux la poser", turn);
+            Assert.IsFalse(RuleSet.Default.MayPlayDrawnCard);
+        }
+
         // ---------- Classement final ----------
 
         [Test]
@@ -267,8 +277,7 @@ namespace Check.Tests
             {
                 int player = round.PlayerId(round.Current);
                 int expected = TurnOrder.Next(player, 5, p => p == 2);
-                round.Apply(TurnAction.Draw);
-                if (round.HasDrawn) round.Apply(TurnAction.Pass);
+                round.Apply(TurnAction.Draw); // piocher termine le tour
                 Assert.AreEqual(expected, round.PlayerId(round.Current));
             }
         }

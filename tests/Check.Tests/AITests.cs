@@ -45,12 +45,14 @@ namespace Check.Tests
 
         /// <summary>Parties complètes jouées par des IA de tous niveaux, de 2 à 10 joueurs : toujours des actions légales.</summary>
         [Test]
-        public void Fuzz_AlwaysLegal([Values(2, 3, 4, 6, 8, 10)] int players)
+        public void Fuzz_AlwaysLegal([Values(2, 3, 4, 6, 8, 10)] int players, [Values(false, true)] bool mayPlayDrawn)
         {
+            var rules = RuleSet.Default;
+            rules.MayPlayDrawnCard = mayPlayDrawn;
             int decisions = 0;
             for (int game = 0; game < 3; game++)
             {
-                var match = new Match(RuleSet.Default, players, new SystemRandom(1000 + game * 17 + players));
+                var match = new Match(rules, players, new SystemRandom(1000 + game * 17 + players));
                 var ais = Enumerable.Range(0, players)
                     .Select(p => new CheckAI(Fast(AllLevels[(p + game) % 4], 25), new SystemRandom(p * 7 + game)))
                     .ToArray();
@@ -64,6 +66,7 @@ namespace Check.Tests
                         int seat = r.Current;
                         var a = ais[r.PlayerId(seat)].ChooseAction(r, seat, CancellationToken.None);
                         Assert.IsTrue(r.IsLegal(a, out var why), $"{a} : {why}");
+                        if (!mayPlayDrawn) Assert.AreNotEqual(ActionKind.Pass, a.Kind, "piocher termine le tour : rien à passer");
                         match.Apply(a);
                         decisions++;
                         Assert.Less(++guard, 5000, "tour sans fin");
@@ -74,7 +77,10 @@ namespace Check.Tests
             Assert.Greater(decisions, 30);
         }
 
-        /// <summary>Positions aléatoires en cours de partie (y compris après une pioche, sous pénalité, après un Valet).</summary>
+        /// <summary>
+        /// Positions aléatoires en cours de partie (sous pénalité, après un Valet ; une sur deux avec la variante
+        /// « pioche, puis pose ou passe », pour couvrir aussi les positions après une pioche).
+        /// </summary>
         [Test]
         public void Fuzz_RandomPositionsAllLevels()
         {
@@ -83,7 +89,9 @@ namespace Check.Tests
             for (int i = 0; i < 300; i++)
             {
                 int players = 2 + rng.Next(9);
-                var r = new Round(RuleSet.Default, Enumerable.Range(0, players).ToList(), rng.Next(players), new SystemRandom(i));
+                var rules = RuleSet.Default;
+                rules.MayPlayDrawnCard = (i & 1) == 1;
+                var r = new Round(rules, Enumerable.Range(0, players).ToList(), rng.Next(players), new SystemRandom(i));
                 int moves = rng.Next(40);
                 for (int m = 0; m < moves && !r.IsOver; m++)
                 {

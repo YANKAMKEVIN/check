@@ -2,7 +2,7 @@
 
 Jeu de cartes camerounais « Check » en 3D, pour Android et iOS (macOS pour tester). Décor « Dernier Métro » (wagon rétro aménagé en salon qui traverse une ville la nuit) : wagon peint en fond, adversaires illustrés assis autour de la table 3D.
 
-Dernière mise à jour : 2026-10-31.
+Dernière mise à jour : 2026-11-21.
 
 Dépôt : https://github.com/YANKAMKEVIN/check (privé), branche `main` suivie sur `origin`.
 
@@ -10,7 +10,8 @@ Dépôt : https://github.com/YANKAMKEVIN/check (privé), branche `main` suivie s
 
 | Sujet | Décision |
 |---|---|
-| Jeu | Check, version de Kevin : voir [regles.md](../regles.md) (points « à valider » = réglages de `RuleSet`) |
+| Jeu | Check, version de Kevin : voir [regles.md](../regles.md) (toutes les règles validées par Kevin le 21/11 ; chacune reste un réglage de `RuleSet`) |
+| Pioche | Règle de Kevin du 21/11 : « Si tu pioches, c'est le tour de la personne qui suit. » Piocher termine le tour, la carte piochée ne se pose pas tout de suite (`RuleSet.MayPlayDrawnCard` = faux ; l'ancienne variante reste disponible et testée) |
 | Moteur | Unity 6000.6.3f1 + URP 17 + Input System, configuration reprise de `~/dev/kevchess` |
 | Plateforme | Mobile d'abord, écran en paysage (jusqu'à 10 joueurs autour de la table) |
 | Joueurs | 2 à 10 : le joueur humain + des IA (4 niveaux) |
@@ -43,7 +44,7 @@ tests/Check.Tests/  tests NUnit hors Unity (Core + AI)
 cd ~/dev/check/tests/Check.Tests && DOTNET_CLI_TELEMETRY_OPTOUT=1 /Applications/Unity/Hub/Editor/6000.6.3f1/Unity.app/Contents/Resources/Scripting/DotNetSdk/dotnet test
 ```
 
-127 tests verts (~20 s à 1 min 30 selon la charge) : moteur (chaque carte spéciale, cumuls et contres, poses multiples, pioche et remélange, Check / Games, éliminations, parties aléatoires de 2 à 10 joueurs, indices publics sur les mains) et IA (légalité, budget de temps, pas de triche, tournois : Moyen bat Facile, Difficile bat Moyen, Expert bat Difficile). La CI GitHub (`.github/workflows/tests.yml`) lance la même commande avec `dotnet test tests/Check.Tests/Check.Tests.csproj`.
+147 tests verts (~20 s à 1 min 30 selon la charge) : moteur (chaque carte spéciale, cumuls et contres, poses multiples, pioche et remélange, Check / Games, éliminations, parties aléatoires de 2 à 10 joueurs, indices publics sur les mains) et IA (légalité, budget de temps, pas de triche, tournois : Moyen bat Facile, Difficile bat Moyen, Expert bat Difficile). La CI GitHub (`.github/workflows/tests.yml`) lance la même commande avec `dotnet test tests/Check.Tests/Check.Tests.csproj`.
 
 Mesure longue de l'Expert, hors CI : `dotnet test tests/Check.Tests/Check.Tests.csproj --filter Name=Measure_ExpertAgainstHard`.
 
@@ -73,7 +74,15 @@ L'APK Android : `Builds/Android/Check.apk` (36 Mo). Toujours passer `-buildTarge
 
 ## Prochaines étapes
 
-- [ ] Kevin valide les règles marquées « à valider » dans `docs/regles.md`
+- [x] Kevin a validé les règles « à valider » de `docs/regles.md` (21/11) et changé la pioche : piocher termine le tour (branche `claude/regle-pioche`).
+  Moteur : `ApplyDraw` passe directement au suivant, sans événement « passe » ; plus jamais de « Passer » proposé. IA, interface et autotest suivent le moteur
+  (leurs branches « après une pioche » ne servent plus qu'à la variante). Fiche « À ton tour » mise à jour.
+  Indices de l'Expert (`Round.MissingCards`) : piocher reste un signal (on pioche quand on ne peut ou ne veut pas jouer), l'indice couvre
+  les cartes d'avant la pioche ; la carte piochée, cachée, reste libre (avant, la passe automatique montrait qu'elle ne se posait pas ;
+  désormais ce n'est plus visible, l'étendre aurait fait lire à l'IA une information secrète). Si le joueur pose ensuite une carte exclue,
+  c'était la carte piochée : toute sa main redevient indicée. Mesure longue après le changement : Expert 53,9 % contre Difficile
+  sur 1 000 parties (51,4 % sans indices), contre 56,1 % / 56,7 % avant ; le tournoi de la CI (> 54 % sur 400 parties) passe.
+  Les sauvegardes faites avant le changement ne se rejouent plus : elles sont effacées à la reprise (voir « Points ouverts »).
 - [x] Image cible choisie par Kevin : `docs/captures/cible/cible_3.jpg` (vue dans l'axe du wagon, enseignes néon, adversaires assis)
 - [x] Refonte « hybride » choisie par Kevin (2026-11-02) et faite : décor peint par défaut, 9 personnages illustrés, réactions, 2 à 10 joueurs ; recette Mac OK (captures `docs/captures/peint/`). Le prototype « tout 3D » a été écarté (visible dans l'historique, commit 0567c7a)
 - [ ] Vérifier le décor peint sur téléphone (pas encore fait : le coordinateur de l'A17, session kevinyankam-91, n'existe plus ; demander à Kevin qui attribue l'A17)

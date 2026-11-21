@@ -31,7 +31,10 @@ namespace Check.Core
         /// <summary>Cartes que le joueur courant devra piocher s'il ne contre pas.</summary>
         public int PendingDraw { get; private set; }
         public PenaltyKind PendingKind { get; private set; }
-        /// <summary>Le joueur courant a déjà pioché ce tour-ci (il peut poser la carte piochée ou passer).</summary>
+        /// <summary>
+        /// Le joueur courant a déjà pioché ce tour-ci (il peut poser la carte piochée ou passer). Seulement avec
+        /// <see cref="RuleSet.MayPlayDrawnCard"/> : par défaut, piocher passe la main au suivant.
+        /// </summary>
         public bool HasDrawn { get; private set; }
         public Card? DrawnCard { get; private set; }
         public bool IsOver { get; private set; }
@@ -542,12 +545,19 @@ namespace Check.Core
             events.Add(new GameEvent { Kind = GameEventKind.Drew, Seat = seat, Cards = drawn, Count = drawn.Count });
             HasDrawn = true;
             DrawnCard = drawn.Count > 0 ? drawn[0] : (Card?)null;
-            // Carte piochée injouable : on passe tout de suite.
-            if (!Rules.MayPlayDrawnCard || !DrawnCard.HasValue || !CanStartWith(DrawnCard.Value))
+            if (!Rules.MayPlayDrawnCard)
+            {
+                // Règle de Kevin : piocher termine le tour. La carte piochée reste cachée et personne ne sait si
+                // elle se posait : l'indice ne couvre que les cartes d'avant la pioche (pas de « passe »).
+                Advance(seat, 0, events);
+                return;
+            }
+            // Variante : carte piochée injouable, on passe tout de suite.
+            if (!DrawnCard.HasValue || !CanStartWith(DrawnCard.Value))
             {
                 // Passe automatique : tout le monde voit que la carte piochée ne se posait pas non plus, l'indice
                 // couvre donc toute la main.
-                if (DrawnCard.HasValue && !CanStartWith(DrawnCard.Value) && missingMask[seat] != 0)
+                if (DrawnCard.HasValue && missingMask[seat] != 0)
                     missingHeld[seat] = hands[seat].Count;
                 events.Add(new GameEvent { Kind = GameEventKind.Passed, Seat = seat });
                 Advance(seat, 0, events);
