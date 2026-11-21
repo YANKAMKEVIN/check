@@ -77,7 +77,7 @@ L'APK Android : `Builds/Android/Check.apk` (36 Mo). Toujours passer `-buildTarge
 - [x] Image cible choisie par Kevin : `docs/captures/cible/cible_3.jpg` (vue dans l'axe du wagon, enseignes néon, adversaires assis)
 - [x] Refonte « hybride » choisie par Kevin (2026-11-02) et faite : décor peint par défaut, 9 personnages illustrés, réactions, 2 à 10 joueurs ; recette Mac OK (captures `docs/captures/peint/`). Le prototype « tout 3D » a été écarté (visible dans l'historique, commit 0567c7a)
 - [ ] Vérifier le décor peint sur téléphone (pas encore fait : le coordinateur de l'A17, session kevinyankam-91, n'existe plus ; demander à Kevin qui attribue l'A17)
-- [ ] Plus de portraits masculins (4 seulement : à 9 adversaires, des voyageuses remplacent des hommes) ; le grand-père a été refusé par le filtre du générateur
+- [ ] Plus de portraits masculins (4 seulement : à 9 adversaires, des voyageuses remplacent des hommes) ; le grand-père a été refusé par le filtre du générateur. **Pour Kevin** : la génération (Kling) et le détourage (script Python) ne sont pas versionnés dans le dépôt. Pour chaque nouveau personnage : `Resources/Painted/perso_N.png` (fond détouré, RVB prémultiplié par l'alpha, hauteur 1024, même cadrage que perso_8/9), une entrée `Portrait(N, false, regard, mains, hauteur)` dans `PaintedScene.Cast` et son cadrage de visage dans `FaceUv` (`PortraitCount` suit). Idéalement 4 hommes de plus (5 + 9 = parité à 9 adversaires) et des prénoms masculins dans `OpponentNames`
 - [ ] Kevin teste le décor « Dernier Métro » sur téléphone (vérifié sur Mac et sur le Galaxy A17, cartes Art déco comprises). Le S24 n'est plus disponible : l'A17 se partage entre sessions, à demander au coordinateur (session kevinyankam-91)
 - [x] Cartes accordées au métro (Art déco) : dos bleu nuit « CHECK », figures en personnel de gare, jokers saltimbanques
 - [ ] Passe QA complète sur téléphone (partie entière à 4 et à 10, Valet, Check oublié, glisser vers le tas, haptique, mesure des fps)
@@ -91,7 +91,8 @@ L'APK Android : `Builds/Android/Check.apk` (36 Mo). Toujours passer `-buildTarge
   Expert 62 % de victoires sur 400 parties (graine 31) ; mesure longue, 1 000 parties : 56,1 % avec indices (réglage final ; 56 à 58 % selon les variantes essayées),
   56,7 % sans. Expert bat donc Difficile, surtout grâce à son budget : l'apport propre des indices reste dans le bruit (écart type ≈ 1,6 point). Piste : modéliser aussi le 7 et le joker gardés en main.
 - [ ] iOS : module iOS + build Xcode + simulateur
-- [ ] Idées : jeu en ligne entre amis, statistiques, thèmes de table, voix « Check ! » / « Games ! »
+- [ ] Idées : jeu en ligne entre amis (backend à choisir), thèmes de table (pas encore de mécanisme : `DecorStyle` ne choisit que le décor peint ou classique), voix « Check ! » / « Games ! » (enregistrements audio à fournir)
+- [x] Statistiques : carnet du joueur fait (`Core/Ux/PlayerStats`, `StatsStore` en PlayerPrefs, écran « Mon carnet » `HudStats`, tests dans `UxTests`)
 
 ## Points ouverts (boucle de jeu et interface)
 
