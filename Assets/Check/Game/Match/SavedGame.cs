@@ -1,7 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
 using Check.Core;
 using UnityEngine;
 
@@ -16,8 +14,10 @@ namespace Check.Game.Match
     public sealed class SavedGame
     {
         const string Key = "check.savedgame";
-        public const string RoundToken = "R";
+        public const string RoundToken = SaveReplay.RoundToken;
 
+        /// <summary>Version du film (<see cref="SaveReplay.CurrentFormat"/>) ; 0 pour les sauvegardes d'avant ce champ.</summary>
+        public int Format;
         public GameSettings Settings;
         public string[] Names;
         public int Seed;
@@ -56,30 +56,10 @@ namespace Check.Game.Match
             }
         }
 
-        /// <summary>« P:12,40:2:1 » = pose des cartes 12 puis 40, couleur demandée 2, Check annoncé ; « D » pioche ; « S » passe.</summary>
-        public static string Encode(TurnAction a)
-        {
-            switch (a.Kind)
-            {
-                case ActionKind.Draw: return "D";
-                case ActionKind.Pass: return "S";
-            }
-            var sb = new StringBuilder("P:");
-            sb.Append(string.Join(",", a.Cards.Select(c => c.Id.ToString())));
-            sb.Append(':').Append(a.RequestedSuit.HasValue ? ((int)a.RequestedSuit.Value).ToString() : "-");
-            sb.Append(':').Append(a.DeclaresCheck ? '1' : '0');
-            return sb.ToString();
-        }
+        /// <summary>Voir <see cref="SaveReplay.Encode"/>.</summary>
+        public static string Encode(TurnAction a) => SaveReplay.Encode(a);
 
-        public static TurnAction Decode(string s)
-        {
-            if (s == "D") return TurnAction.Draw;
-            if (s == "S") return TurnAction.Pass;
-            var parts = s.Split(':');
-            if (parts.Length != 4 || parts[0] != "P") throw new FormatException("Action inconnue : " + s);
-            var cards = parts[1].Split(',').Select(x => new Card(int.Parse(x))).ToList();
-            Suit? suit = parts[2] == "-" ? (Suit?)null : (Suit)int.Parse(parts[2]);
-            return TurnAction.Play(cards, suit, parts[3] == "1");
-        }
+        /// <summary>Voir <see cref="SaveReplay.Decode"/>.</summary>
+        public static TurnAction Decode(string s) => SaveReplay.Decode(s);
     }
 }

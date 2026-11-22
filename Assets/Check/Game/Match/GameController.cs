@@ -78,7 +78,7 @@ namespace Check.Game.Match
             var picked = OpponentNames.Pick(n - 1, rng, names[0]);
             for (int i = 1; i < n; i++) names[i] = picked[i - 1];
             int dealer = rng.Next(n);
-            save = new SavedGame { Settings = Settings.Clone(), Names = names, Seed = seed, FirstDealer = dealer };
+            save = new SavedGame { Format = SaveReplay.CurrentFormat, Settings = Settings.Clone(), Names = names, Seed = seed, FirstDealer = dealer };
             Begin(names, seed, dealer);
             var events = Match.StartRound();
             save.Log.Add(SavedGame.RoundToken);
@@ -102,9 +102,13 @@ namespace Check.Game.Match
             ApplySpeed();
         }
 
-        /// <summary>Reprend la partie sauvegardée (rejoue le film des actions). Faux si rien à reprendre.</summary>
+        /// <summary>Raison du dernier échec de <see cref="Resume"/> quand une sauvegarde existait mais ne se rejouait pas (sinon null).</summary>
+        public string LastResumeFailure { get; private set; }
+
+        /// <summary>Reprend la partie sauvegardée (rejoue le film des actions). Faux si rien à reprendre ou si elle ne se rejoue pas.</summary>
         public bool Resume()
         {
+            LastResumeFailure = null;
             var saved = SavedGame.Load();
             if (saved == null) return false;
             CancelAI();
@@ -114,12 +118,8 @@ namespace Check.Game.Match
                 Settings = saved.Settings.Clone();
                 rng = new System.Random(saved.Seed ^ saved.Log.Count);
                 Begin(saved.Names, saved.Seed, saved.FirstDealer);
-                foreach (var token in saved.Log)
-                {
-                    if (token == SavedGame.RoundToken) Match.StartRound();
-                    else Match.Apply(SavedGame.Decode(token));
-                }
-                if (Match.IsOver || Match.Round == null) throw new InvalidOperationException("partie déjà finie");
+                if (!SaveReplay.TryReplay(Match, saved.Format, saved.Log, out var reason))
+                    throw new InvalidOperationException(reason);
                 save = saved;
                 Spectating = !HumanAlive;
                 ApplySpeed();
@@ -131,6 +131,7 @@ namespace Check.Game.Match
             catch (Exception e)
             {
                 Debug.LogWarning("[Check] Reprise impossible, sauvegarde effacée : " + e.Message);
+                LastResumeFailure = e.Message;
                 SavedGame.Clear();
                 Match = null;
                 table.Setup(2);

@@ -163,7 +163,13 @@ namespace Check.Game.UI
             {
                 sfx.Play(Sfx.Click);
                 if (game.Resume()) Show(homeOverlay, false);
-                else { resumeSavedButton.gameObject.SetActive(false); Flash("Aucune partie à reprendre"); }
+                else
+                {
+                    resumeSavedButton.gameObject.SetActive(false);
+                    Flash(game.LastResumeFailure != null
+                        ? "Ta partie en cours n'a pas pu être reprise après la mise à jour"
+                        : "Aucune partie à reprendre");
+                }
             }, UIKit.Cyan, 40);
             UIKit.Size(resumeSavedButton, 104);
             var info = Row(card, 100);

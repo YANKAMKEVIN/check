@@ -2,7 +2,7 @@
 
 Jeu de cartes camerounais « Check » en 3D, pour Android et iOS (macOS pour tester). Décor « Dernier Métro » (wagon rétro aménagé en salon qui traverse une ville la nuit) : wagon peint en fond, adversaires illustrés assis autour de la table 3D.
 
-Dernière mise à jour : 2026-11-21.
+Dernière mise à jour : 2026-11-22.
 
 Dépôt : https://github.com/YANKAMKEVIN/check (privé), branche `main` suivie sur `origin`.
 
@@ -23,7 +23,8 @@ Dépôt : https://github.com/YANKAMKEVIN/check (privé), branche `main` suivie s
 
 ```
 Assets/Check/
-  Core/    règles pures (C#, sans UnityEngine) : Card, RuleSet, TurnAction, GameEvent, Round (un tour), Match (tours + éliminations)
+  Core/    règles pures (C#, sans UnityEngine) : Card, RuleSet, TurnAction, GameEvent, Round (un tour), Match (tours + éliminations),
+           SaveReplay (film de sauvegarde : codage des actions, version, rejeu vérifié)
   AI/      IA des adversaires (pure C#)
   Game/
     Visuals/ CardView, TableView (contrats publics), WagonDecor (wagon + ville), outillage repris de KevChess
@@ -44,7 +45,7 @@ tests/Check.Tests/  tests NUnit hors Unity (Core + AI)
 cd ~/dev/check/tests/Check.Tests && DOTNET_CLI_TELEMETRY_OPTOUT=1 /Applications/Unity/Hub/Editor/6000.6.3f1/Unity.app/Contents/Resources/Scripting/DotNetSdk/dotnet test
 ```
 
-147 tests verts (~20 s à 1 min 30 selon la charge) : moteur (chaque carte spéciale, cumuls et contres, poses multiples, pioche et remélange, Check / Games, éliminations, parties aléatoires de 2 à 10 joueurs, indices publics sur les mains) et IA (légalité, budget de temps, pas de triche, tournois : Moyen bat Facile, Difficile bat Moyen, Expert bat Difficile). La CI GitHub (`.github/workflows/tests.yml`) lance la même commande avec `dotnet test tests/Check.Tests/Check.Tests.csproj`.
+180 tests verts (~20 s à 1 min 30 selon la charge) : moteur (chaque carte spéciale, cumuls et contres, poses multiples, pioche et remélange, Check / Games, éliminations, parties aléatoires de 2 à 10 joueurs, indices publics sur les mains, film de sauvegarde) et IA (légalité, budget de temps, pas de triche, tournois : Moyen bat Facile, Difficile bat Moyen, Expert bat Difficile). La CI GitHub (`.github/workflows/tests.yml`) lance la même commande avec `dotnet test tests/Check.Tests/Check.Tests.csproj`.
 
 Mesure longue de l'Expert, hors CI : `dotnet test tests/Check.Tests/Check.Tests.csproj --filter Name=Measure_ExpertAgainstHard`.
 
@@ -108,7 +109,11 @@ L'APK Android : `Builds/Android/Check.apk` (36 Mo). Toujours passer `-buildTarge
 - Passe QA sur téléphone : faite en partie sur le S24 (voir ci-dessus) ; haptique, encoches et bouton retour non vérifiés au doigt.
 - As : on ne se saute jamais soi-même (à deux, un ou deux As = on rejoue), corrigé dans le moteur.
 - Glisser une carte vers le tas : implémenté, pas encore essayé au doigt.
-- La reprise rejoue le « film » des actions (graine + actions) : une sauvegarde faite avec une version différente des règles est effacée si elle ne se rejoue pas.
+- La reprise rejoue le « film » des actions (graine + actions) avec `Core/SaveReplay.TryReplay` (testé hors Unity) : chaque coup est vérifié avant
+  d'être joué, et une sauvegarde d'une autre version (`SavedGame.Format` ≠ `SaveReplay.CurrentFormat`), illisible ou illégale est effacée
+  avec une raison dans le journal ; l'accueil affiche « Ta partie en cours n'a pas pu être reprise après la mise à jour » (au lieu de
+  « Aucune partie à reprendre »). Les sauvegardes d'avant ce champ (format 0, avant la règle de la pioche du 21/11) sont toutes refusées.
+  **Règle** : incrémenter `SaveReplay.CurrentFormat` à chaque changement de `Round.Apply`, du tirage ou des règles par défaut.
 
 ## Pièges connus (hérités de KevChess)
 
